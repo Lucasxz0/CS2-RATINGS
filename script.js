@@ -268,17 +268,34 @@ async function handleRegister() {
   btn.disabled = true;
   btn.innerHTML = '<span class="btn-text">Criando conta</span><span class="btn-arrow">⏳</span>';
 
-  const { data, error } = await supabase.auth.signUp({
+  const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
     email, password: pass,
     options: { data: { player_key: regData.playerKey, full_name: regData.fullName } }
   });
 
+  if (signUpError) {
+    btn.disabled = false;
+    btn.innerHTML = '<span class="btn-text">Criar Conta</span><span class="btn-arrow">🚀</span>';
+    toast('Erro ao criar conta: ' + signUpError.message, 'err');
+    return;
+  }
+
+  // Faz login imediatamente após criar a conta (sem precisar confirmar e-mail)
+  const { data: loginData, error: loginError } = await supabase.auth.signInWithPassword({ email, password: pass });
+
   btn.disabled = false;
   btn.innerHTML = '<span class="btn-text">Criar Conta</span><span class="btn-arrow">🚀</span>';
 
-  if (error) { toast('Erro: ' + error.message, 'err'); return; }
+  if (loginError) {
+    // Conta criada mas email precisa ser confirmado
+    toast('Conta criada! Verifique seu e-mail para confirmar e depois faça login. 📧', 'ok');
+    switchAuthTab('entrar');
+    return;
+  }
+
   toast('Conta criada! Bem-vindo à line 🏆', 'ok');
 }
+
 
 async function logout() {
   await supabase.auth.signOut();
