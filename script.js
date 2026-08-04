@@ -3,7 +3,8 @@
 // =========================================
 const SUPABASE_URL = 'https://pdyqoajbdyjiktnkxqqi.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_0c5ydPhGf8lGIXTjrGiidQ_Jrp1WW_O';
-const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+let supabase; // inicializado no DOMContentLoaded
+
 
 const DEFAULT_PLAYERS = [
   { id: 'vitin', name: 'VITIN', apelido: 'Cafajeste Chucro', role: 'IGL', team: 'CS2', photo: null },
@@ -773,7 +774,16 @@ async function deleteClip(clipId) {
   await fetchAllData(); renderClips();
 }
 
-// Inicializar aplicativo
-initParticles();
-initPwListener();
-init();
+// Inicializar aplicativo SOMENTE após o DOM + CDN estarem prontos
+document.addEventListener('DOMContentLoaded', () => {
+  // Garante que o CDN do Supabase já carregou
+  if (!window.supabase) {
+    console.error('Supabase CDN não carregou!');
+    return;
+  }
+  supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+  initParticles();
+  initPwListener();
+  init();
+});
