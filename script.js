@@ -229,12 +229,26 @@ function initPwListener() {
 // AUTH (SUPABASE)
 // =========================================
 function switchAuthTab(tab) {
-  document.querySelectorAll('.auth-tab').forEach(e => e.classList.remove('active'));
-  document.querySelectorAll('.auth-form').forEach(e => e.classList.remove('active'));
-  document.getElementById('tab-' + tab).classList.add('active');
-  document.getElementById('form-' + tab).classList.add('active');
-  if (tab === 'criar') { renderPlayerSelectGrid(); regGoStep(1); }
+  // Tab highlighting
+  document.getElementById('tab-entrar').classList.toggle('active', tab === 'entrar');
+  document.getElementById('tab-criar').classList.toggle('active', tab === 'criar');
+
+  // Mostrar/esconder forms diretamente via style (evita problemas de CSS specificity)
+  const fEntrar = document.getElementById('form-entrar');
+  const fCriar  = document.getElementById('form-criar');
+
+  fEntrar.style.display = (tab === 'entrar') ? 'flex' : 'none';
+  fEntrar.style.flexDirection = 'column';
+
+  fCriar.style.display  = (tab === 'criar')  ? 'flex' : 'none';
+  fCriar.style.flexDirection = 'column';
+
+  if (tab === 'criar') {
+    renderPlayerSelectGrid();
+    regGoStep(1);
+  }
 }
+
 
 async function handleLogin() {
   const email = document.getElementById('login-email').value.trim();
