@@ -16,46 +16,192 @@
 </head>
 <body>
 
-<!-- LOGIN SCREEN -->
+<!-- ============================= LOGIN SCREEN ============================= -->
 <div class="login-screen" id="login-screen">
-  <div class="login-logo">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-      <circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="3"/><line x1="12" y1="2" x2="12" y2="6"/><line x1="12" y1="18" x2="12" y2="22"/><line x1="2" y1="12" x2="6" y2="12"/><line x1="18" y1="12" x2="22" y2="12"/>
-    </svg>
-    <h1>CS2 RATINGS</h1>
-    <p>LINE OFICIAL 2026</p>
-  </div>
-  
-  <div class="auth-box">
-    <div class="auth-tabs">
-      <button class="auth-tab active" id="tab-login" onclick="switchAuthTab('login')">Entrar</button>
-      <button class="auth-tab" id="tab-register" onclick="switchAuthTab('register')">Criar Conta</button>
+
+  <!-- Partículas de fundo animadas -->
+  <div class="login-particles" id="login-particles"></div>
+
+  <!-- Logo topo -->
+  <div class="login-logo" id="login-logo">
+    <div class="login-logo-icon">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+        <circle cx="12" cy="12" r="10"/>
+        <circle cx="12" cy="12" r="3"/>
+        <line x1="12" y1="2" x2="12" y2="6"/>
+        <line x1="12" y1="18" x2="12" y2="22"/>
+        <line x1="2" y1="12" x2="6" y2="12"/>
+        <line x1="18" y1="12" x2="22" y2="12"/>
+      </svg>
     </div>
-    
-    <!-- Login Form -->
-    <div id="form-login" class="auth-form active">
-      <input type="email" id="login-email" class="input-box" placeholder="E-mail" />
-      <input type="password" id="login-password" class="input-box" placeholder="Senha" />
-      <button class="btn btn-gold btn-block" onclick="handleLogin()" id="btn-login">Entrar</button>
-    </div>
-    
-    <!-- Register Form -->
-    <div id="form-register" class="auth-form">
-      <input type="email" id="reg-email" class="input-box" placeholder="E-mail" />
-      <input type="password" id="reg-password" class="input-box" placeholder="Senha" />
-      <select id="reg-player" class="input-box">
-        <option value="" disabled selected>Qual jogador você é?</option>
-        <option value="vitin">VITIN (Cafajeste Chucro)</option>
-        <option value="joao">JOÃO (GRNTT)</option>
-        <option value="vini">VINI (MONGOLOY)</option>
-        <option value="gabriel">GABRIEL (CHAVES)</option>
-        <option value="luiseira">LUISEIRA (Capitão Caverna)</option>
-        <option value="lucas">LUCAS (BUIU)</option>
-      </select>
-      <button class="btn btn-gold btn-block" onclick="handleRegister()" id="btn-register">Criar Conta</button>
+    <div class="login-logo-text">
+      <span class="login-logo-title">CS2 RATINGS</span>
+      <span class="login-logo-sub">LINE OFICIAL • 2026</span>
     </div>
   </div>
+
+  <!-- Auth card container -->
+  <div class="auth-container" id="auth-container">
+
+    <!-- Tabs -->
+    <div class="auth-tabs" id="auth-tabs">
+      <button class="auth-tab active" id="tab-entrar" onclick="switchAuthTab('entrar')">
+        <span class="tab-icon">🎮</span> Entrar
+      </button>
+      <button class="auth-tab" id="tab-criar" onclick="switchAuthTab('criar')">
+        <span class="tab-icon">✨</span> Criar Conta
+      </button>
+    </div>
+
+    <!-- ========== ENTRAR ========== -->
+    <div class="auth-form active" id="form-entrar">
+      <div class="form-header">
+        <h2 class="form-title">Bem-vindo de volta</h2>
+        <p class="form-sub">Entre com seu e-mail e senha</p>
+      </div>
+
+      <div class="input-group">
+        <label class="input-label" for="login-email">E-mail</label>
+        <div class="input-wrap">
+          <span class="input-icon">📧</span>
+          <input type="email" id="login-email" class="input-field" placeholder="seu@email.com" autocomplete="email" />
+        </div>
+      </div>
+
+      <div class="input-group">
+        <label class="input-label" for="login-password">Senha</label>
+        <div class="input-wrap">
+          <span class="input-icon">🔒</span>
+          <input type="password" id="login-password" class="input-field" placeholder="••••••••" autocomplete="current-password" />
+          <button class="input-eye" onclick="togglePw('login-password', this)" type="button" tabindex="-1" aria-label="Ver senha">👁</button>
+        </div>
+      </div>
+
+      <button class="btn-login-submit" onclick="handleLogin()" id="btn-login">
+        <span class="btn-text">Entrar</span>
+        <span class="btn-arrow">→</span>
+      </button>
+
+      <p class="auth-switch-hint">Ainda não tem conta? <button class="link-btn" onclick="switchAuthTab('criar')">Criar agora</button></p>
+    </div>
+
+    <!-- ========== CRIAR CONTA (MULTI-STEP) ========== -->
+    <div class="auth-form" id="form-criar">
+
+      <!-- Progress Steps -->
+      <div class="reg-steps" id="reg-steps">
+        <div class="reg-step active" id="rstep-1">
+          <div class="reg-step-circle">1</div>
+          <span>Identificação</span>
+        </div>
+        <div class="reg-step-line"></div>
+        <div class="reg-step" id="rstep-2">
+          <div class="reg-step-circle">2</div>
+          <span>Seu jogador</span>
+        </div>
+        <div class="reg-step-line"></div>
+        <div class="reg-step" id="rstep-3">
+          <div class="reg-step-circle">3</div>
+          <span>Conta</span>
+        </div>
+      </div>
+
+      <!-- Step 1: Nome + Nick -->
+      <div class="reg-panel active" id="reg-panel-1">
+        <div class="form-header">
+          <h2 class="form-title">Como você se chama?</h2>
+          <p class="form-sub">Seu nome real para a comunidade ver</p>
+        </div>
+
+        <div class="input-group">
+          <label class="input-label" for="reg-fullname">Seu nome</label>
+          <div class="input-wrap">
+            <span class="input-icon">👤</span>
+            <input type="text" id="reg-fullname" class="input-field" placeholder="Ex: Lucas, João, Vitin..." autocomplete="given-name" maxlength="30" />
+          </div>
+        </div>
+
+        <button class="btn-login-submit" onclick="regNextStep(1)" id="btn-reg-s1">
+          <span class="btn-text">Continuar</span>
+          <span class="btn-arrow">→</span>
+        </button>
+      </div>
+
+      <!-- Step 2: Seleção do Jogador (cards visuais) -->
+      <div class="reg-panel" id="reg-panel-2">
+        <div class="form-header">
+          <h2 class="form-title">Qual é o seu nick?</h2>
+          <p class="form-sub">Selecione seu personagem na line</p>
+        </div>
+
+        <div class="player-select-grid" id="player-select-grid">
+          <!-- Gerado por JS -->
+        </div>
+
+        <div class="reg-nav">
+          <button class="btn-back" onclick="regGoStep(1)">← Voltar</button>
+          <button class="btn-login-submit reg-next-btn" onclick="regNextStep(2)" id="btn-reg-s2">
+            <span class="btn-text">Continuar</span>
+            <span class="btn-arrow">→</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Step 3: E-mail + Senha -->
+      <div class="reg-panel" id="reg-panel-3">
+        <div class="form-header">
+          <h2 class="form-title">Crie sua conta</h2>
+          <p class="form-sub">Último passo — quase lá!</p>
+        </div>
+
+        <!-- Preview do jogador selecionado -->
+        <div class="player-selected-preview" id="player-preview">
+          <div class="preview-av" id="preview-av"></div>
+          <div class="preview-info">
+            <div class="preview-name" id="preview-name"></div>
+            <div class="preview-nick" id="preview-nick"></div>
+          </div>
+          <button class="preview-change" onclick="regGoStep(2)" title="Trocar jogador">✏️</button>
+        </div>
+
+        <div class="input-group">
+          <label class="input-label" for="reg-email">E-mail</label>
+          <div class="input-wrap">
+            <span class="input-icon">📧</span>
+            <input type="email" id="reg-email" class="input-field" placeholder="seu@email.com" autocomplete="email" />
+          </div>
+        </div>
+
+        <div class="input-group">
+          <label class="input-label" for="reg-password">Senha</label>
+          <div class="input-wrap">
+            <span class="input-icon">🔒</span>
+            <input type="password" id="reg-password" class="input-field" placeholder="Mínimo 6 caracteres" autocomplete="new-password" />
+            <button class="input-eye" onclick="togglePw('reg-password', this)" type="button" tabindex="-1" aria-label="Ver senha">👁</button>
+          </div>
+          <div class="pw-strength-bar">
+            <div class="pw-strength-fill" id="pw-strength-fill"></div>
+          </div>
+          <div class="pw-strength-label" id="pw-strength-label"></div>
+        </div>
+
+        <div class="reg-nav">
+          <button class="btn-back" onclick="regGoStep(2)">← Voltar</button>
+          <button class="btn-login-submit reg-next-btn" onclick="handleRegister()" id="btn-register">
+            <span class="btn-text">Criar Conta</span>
+            <span class="btn-arrow">🚀</span>
+          </button>
+        </div>
+      </div>
+
+      <p class="auth-switch-hint" style="margin-top:16px">Já tem conta? <button class="link-btn" onclick="switchAuthTab('entrar')">Entrar</button></p>
+    </div>
+
+  </div>
+  <!-- /auth-container -->
+
 </div>
+<!-- /LOGIN SCREEN -->
 
 <!-- HEADER -->
 <header id="main-header" style="display:none">

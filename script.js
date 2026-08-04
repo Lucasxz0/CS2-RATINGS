@@ -77,6 +77,154 @@ function toast(msg, type = 'inf') {
 }
 
 // =========================================
+// LOGIN SCREEN UX
+// =========================================
+
+// Gera partículas animadas no fundo
+function initParticles() {
+  const container = document.getElementById('login-particles');
+  if (!container) return;
+  container.innerHTML = '';
+  for (let i = 0; i < 18; i++) {
+    const p = document.createElement('div');
+    p.className = 'particle';
+    const size = Math.random() * 4 + 2;
+    p.style.cssText = `
+      width:${size}px; height:${size}px;
+      left:${Math.random() * 100}%;
+      bottom:${Math.random() * 20}%;
+      --dur:${5 + Math.random() * 8}s;
+      --delay:${Math.random() * 6}s;
+      opacity:0;
+    `;
+    container.appendChild(p);
+  }
+}
+
+
+// Toggle visibilidade da senha
+function togglePw(inputId, btn) {
+  const inp = document.getElementById(inputId);
+  if (inp.type === 'password') { inp.type = 'text'; btn.textContent = '🙈'; }
+  else { inp.type = 'password'; btn.textContent = '👁'; }
+}
+
+// Força da senha
+function checkPwStrength(pw) {
+  let score = 0;
+  if (pw.length >= 6) score++;
+  if (pw.length >= 10) score++;
+  if (/[A-Z]/.test(pw)) score++;
+  if (/[0-9]/.test(pw)) score++;
+  if (/[^A-Za-z0-9]/.test(pw)) score++;
+  return score;
+}
+function updatePwStrength(pw) {
+  const fill = document.getElementById('pw-strength-fill');
+  const label = document.getElementById('pw-strength-label');
+  if (!fill || !label) return;
+  if (!pw) { fill.style.width = '0%'; label.textContent = ''; return; }
+  const s = checkPwStrength(pw);
+  const map = [
+    { pct: '20%', bg: '#E53935', txt: 'Muito fraca' },
+    { pct: '40%', bg: '#FF7043', txt: 'Fraca' },
+    { pct: '60%', bg: '#FFB800', txt: 'Razoável' },
+    { pct: '80%', bg: '#66BB6A', txt: 'Boa' },
+    { pct: '100%', bg: '#43A047', txt: 'Forte 💪' },
+  ];
+  const m = map[Math.min(s - 1, 4)] || map[0];
+  fill.style.width = m.pct; fill.style.background = m.bg; label.textContent = m.txt; label.style.color = m.bg;
+}
+
+// =========================================
+// MULTI-STEP REGISTER
+// =========================================
+let regData = { fullName: '', playerKey: '' };
+let regCurrentStep = 1;
+
+function renderPlayerSelectGrid() {
+  const grid = document.getElementById('player-select-grid');
+  if (!grid) return;
+  grid.innerHTML = DEFAULT_PLAYERS.map(p => `
+    <div class="player-card-sel ${regData.playerKey === p.id ? 'selected' : ''}" 
+         onclick="selectPlayer('${p.id}')" id="pcard-${p.id}">
+      <div class="player-card-check">✓</div>
+      <div class="player-card-av">${p.photo ? `<img src="${esc(p.photo)}">` : initials(p.name)}</div>
+      <div class="player-card-name">${esc(p.name)}</div>
+      <div class="player-card-nick">${esc(p.apelido)}</div>
+    </div>
+  `).join('');
+}
+
+function selectPlayer(id) {
+  regData.playerKey = id;
+  document.querySelectorAll('.player-card-sel').forEach(el => el.classList.remove('selected'));
+  const card = document.getElementById('pcard-' + id);
+  if (card) card.classList.add('selected');
+}
+
+function updateRegSteps(step) {
+  regCurrentStep = step;
+  [1, 2, 3].forEach(n => {
+    const s = document.getElementById('rstep-' + n);
+    const line = document.querySelectorAll('.reg-step-line')[n - 1];
+    if (!s) return;
+    s.classList.remove('active', 'done');
+    if (n < step) s.classList.add('done');
+    else if (n === step) s.classList.add('active');
+    if (line) { line.classList.toggle('done', n < step); }
+  });
+}
+
+function regGoStep(step) {
+  document.querySelectorAll('.reg-panel').forEach(p => p.classList.remove('active'));
+  const panel = document.getElementById('reg-panel-' + step);
+  if (panel) { panel.classList.add('active'); }
+  updateRegSteps(step);
+
+  // Se foi para step 3, atualiza preview do jogador selecionado
+  if (step === 3) updatePlayerPreview();
+}
+
+function regNextStep(fromStep) {
+  if (fromStep === 1) {
+    const name = document.getElementById('reg-fullname').value.trim();
+    if (!name) { shakeInput('reg-fullname'); return toast('Digite seu nome!', 'err'); }
+    regData.fullName = name;
+    regGoStep(2);
+  } else if (fromStep === 2) {
+    if (!regData.playerKey) { return toast('Selecione seu personagem!', 'err'); }
+    regGoStep(3);
+  }
+}
+
+function updatePlayerPreview() {
+  const p = DEFAULT_PLAYERS.find(x => x.id === regData.playerKey);
+  if (!p) return;
+  const av = document.getElementById('preview-av');
+  const nm = document.getElementById('preview-name');
+  const nk = document.getElementById('preview-nick');
+  if (av) av.textContent = initials(p.name);
+  if (nm) nm.textContent = regData.fullName || p.name;
+  if (nk) nk.textContent = `"${p.apelido}" • ${p.role}`;
+}
+
+function shakeInput(id) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.style.animation = 'none';
+  requestAnimationFrame(() => {
+    el.style.animation = 'shake 0.4s cubic-bezier(.36,.07,.19,.97)';
+  });
+}
+
+// Inicializa listener da senha
+function initPwListener() {
+  const pw = document.getElementById('reg-password');
+  if (pw) pw.addEventListener('input', () => updatePwStrength(pw.value));
+}
+
+// =========================================
 // AUTH (SUPABASE)
 // =========================================
 function switchAuthTab(tab) {
@@ -84,40 +232,52 @@ function switchAuthTab(tab) {
   document.querySelectorAll('.auth-form').forEach(e => e.classList.remove('active'));
   document.getElementById('tab-' + tab).classList.add('active');
   document.getElementById('form-' + tab).classList.add('active');
+  if (tab === 'criar') { renderPlayerSelectGrid(); regGoStep(1); }
 }
 
 async function handleLogin() {
-  const email = document.getElementById('login-email').value;
+  const email = document.getElementById('login-email').value.trim();
   const pass = document.getElementById('login-password').value;
   const btn = document.getElementById('btn-login');
 
-  if (!email || !pass) return toast('Preencha os campos', 'err');
+  if (!email) { shakeInput('login-email'); return toast('Digite seu e-mail!', 'err'); }
+  if (!pass) { shakeInput('login-password'); return toast('Digite sua senha!', 'err'); }
 
-  btn.textContent = 'Carregando...'; btn.disabled = true;
+  btn.disabled = true;
+  btn.innerHTML = '<span class="btn-text">Entrando</span><span class="btn-arrow">⏳</span>';
+
   const { data, error } = await supabase.auth.signInWithPassword({ email, password: pass });
-  btn.textContent = 'Entrar'; btn.disabled = false;
+
+  btn.disabled = false;
+  btn.innerHTML = '<span class="btn-text">Entrar</span><span class="btn-arrow">→</span>';
 
   if (error) { toast('Erro: ' + error.message, 'err'); return; }
-  toast('Login efetuado!', 'ok');
+  toast('Login efetuado! Bem-vindo de volta 🎮', 'ok');
 }
 
 async function handleRegister() {
-  const email = document.getElementById('reg-email').value;
+  const email = document.getElementById('reg-email').value.trim();
   const pass = document.getElementById('reg-password').value;
-  const playerKey = document.getElementById('reg-player').value;
   const btn = document.getElementById('btn-register');
 
-  if (!email || !pass || !playerKey) return toast('Preencha todos os campos', 'err');
+  if (!email) { shakeInput('reg-email'); return toast('Digite seu e-mail!', 'err'); }
+  if (!pass || pass.length < 6) { shakeInput('reg-password'); return toast('Senha deve ter ao menos 6 caracteres!', 'err'); }
+  if (!regData.playerKey) { regGoStep(2); return toast('Selecione seu personagem!', 'err'); }
+  if (!regData.fullName) { regGoStep(1); return toast('Digite seu nome!', 'err'); }
 
-  btn.textContent = 'Criando...'; btn.disabled = true;
+  btn.disabled = true;
+  btn.innerHTML = '<span class="btn-text">Criando conta</span><span class="btn-arrow">⏳</span>';
+
   const { data, error } = await supabase.auth.signUp({
     email, password: pass,
-    options: { data: { player_key: playerKey } }
+    options: { data: { player_key: regData.playerKey, full_name: regData.fullName } }
   });
-  btn.textContent = 'Criar Conta'; btn.disabled = false;
+
+  btn.disabled = false;
+  btn.innerHTML = '<span class="btn-text">Criar Conta</span><span class="btn-arrow">🚀</span>';
 
   if (error) { toast('Erro: ' + error.message, 'err'); return; }
-  toast('Conta criada com sucesso!', 'ok');
+  toast('Conta criada! Bem-vindo à line 🏆', 'ok');
 }
 
 async function logout() {
@@ -141,9 +301,14 @@ async function init() {
 async function handleAuthChange(session) {
   if (session) {
     currentUser = session.user;
-    loggedInPlayerId = currentUser.user_metadata?.player_key; // ex: 'vitin'
+    loggedInPlayerId = currentUser.user_metadata?.player_key;
 
-    document.getElementById('login-screen').style.display = 'none';
+    // Oculta login com fade
+    const ls = document.getElementById('login-screen');
+    ls.style.opacity = '0';
+    ls.style.transition = 'opacity 0.5s';
+    setTimeout(() => { ls.style.display = 'none'; }, 500);
+
     document.getElementById('main-header').style.display = 'flex';
     document.getElementById('main-content').style.display = 'block';
 
@@ -153,7 +318,9 @@ async function handleAuthChange(session) {
     nav('colecao');
   } else {
     currentUser = null; loggedInPlayerId = null;
-    document.getElementById('login-screen').style.display = 'flex';
+    const ls = document.getElementById('login-screen');
+    ls.style.display = 'flex';
+    ls.style.opacity = '1';
     document.getElementById('main-header').style.display = 'none';
     document.getElementById('main-content').style.display = 'none';
   }
@@ -590,4 +757,6 @@ async function deleteClip(clipId) {
 }
 
 // Inicializar aplicativo
+initParticles();
+initPwListener();
 init();
