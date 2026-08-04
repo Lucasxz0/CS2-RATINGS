@@ -1,354 +1,383 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
+
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>CS2 Player Ratings 2026 — Line Oficial</title>
-  <meta name="description" content="Sistema de avaliação dos jogadores da line, com cartinhas estilo EA Sports FC e feed de clips." />
+  <meta name="description"
+    content="Sistema de avaliação dos jogadores da line, com cartinhas estilo EA Sports FC e feed de clips." />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@600;700&family=Rajdhani:wght@400;500;600;700&family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet" />
-  
+  <link
+    href="https://fonts.googleapis.com/css2?family=Oswald:wght@600;700&family=Rajdhani:wght@400;500;600;700&family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@500;700&display=swap"
+    rel="stylesheet" />
+
   <!-- Supabase CDN -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
   <link rel="stylesheet" href="style.css" />
 </head>
+
 <body>
 
-<!-- ============================= LOGIN SCREEN ============================= -->
-<div class="login-screen" id="login-screen">
+  <!-- ============================= LOGIN SCREEN ============================= -->
+  <div class="login-screen" id="login-screen">
 
-  <!-- Partículas de fundo animadas -->
-  <div class="login-particles" id="login-particles"></div>
+    <!-- Partículas de fundo animadas -->
+    <div class="login-particles" id="login-particles"></div>
 
-  <!-- Logo topo -->
-  <div class="login-logo" id="login-logo">
-    <div class="login-logo-icon">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
-        <circle cx="12" cy="12" r="10"/>
-        <circle cx="12" cy="12" r="3"/>
-        <line x1="12" y1="2" x2="12" y2="6"/>
-        <line x1="12" y1="18" x2="12" y2="22"/>
-        <line x1="2" y1="12" x2="6" y2="12"/>
-        <line x1="18" y1="12" x2="22" y2="12"/>
-      </svg>
-    </div>
-    <div class="login-logo-text">
-      <span class="login-logo-title">CS2 RATINGS</span>
-      <span class="login-logo-sub">LINE OFICIAL • 2026</span>
-    </div>
-  </div>
-
-  <!-- Auth card container -->
-  <div class="auth-container" id="auth-container">
-
-    <!-- Tabs -->
-    <div class="auth-tabs" id="auth-tabs">
-      <button class="auth-tab active" id="tab-entrar" onclick="switchAuthTab('entrar')">
-        <span class="tab-icon">🎮</span> Entrar
-      </button>
-      <button class="auth-tab" id="tab-criar" onclick="switchAuthTab('criar')">
-        <span class="tab-icon">✨</span> Criar Conta
-      </button>
+    <!-- Logo topo -->
+    <div class="login-logo" id="login-logo">
+      <div class="login-logo-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+          <circle cx="12" cy="12" r="10" />
+          <circle cx="12" cy="12" r="3" />
+          <line x1="12" y1="2" x2="12" y2="6" />
+          <line x1="12" y1="18" x2="12" y2="22" />
+          <line x1="2" y1="12" x2="6" y2="12" />
+          <line x1="18" y1="12" x2="22" y2="12" />
+        </svg>
+      </div>
+      <div class="login-logo-text">
+        <span class="login-logo-title">CS2 RATINGS</span>
+        <span class="login-logo-sub">LINE OFICIAL • 2026</span>
+      </div>
     </div>
 
-    <!-- ========== ENTRAR ========== -->
-    <div class="auth-form" id="form-entrar" style="display:flex; flex-direction:column;">
-      <div class="form-header">
-        <h2 class="form-title">Bem-vindo de volta</h2>
-        <p class="form-sub">Entre com seu e-mail e senha</p>
-      </div>
+    <!-- Auth card container -->
+    <div class="auth-container" id="auth-container">
 
-      <div class="input-group">
-        <label class="input-label" for="login-email">E-mail</label>
-        <div class="input-wrap">
-          <span class="input-icon">📧</span>
-          <input type="email" id="login-email" class="input-field" placeholder="seu@email.com" autocomplete="email" />
-        </div>
-      </div>
-
-      <div class="input-group">
-        <label class="input-label" for="login-password">Senha</label>
-        <div class="input-wrap">
-          <span class="input-icon">🔒</span>
-          <input type="password" id="login-password" class="input-field" placeholder="••••••••" autocomplete="current-password" />
-          <button class="input-eye" onclick="togglePw('login-password', this)" type="button" tabindex="-1" aria-label="Ver senha">👁</button>
-        </div>
-      </div>
-
-      <button class="btn-login-submit" onclick="handleLogin()" id="btn-login">
-        <span class="btn-text">Entrar</span>
-        <span class="btn-arrow">→</span>
-      </button>
-
-      <p class="auth-switch-hint">Ainda não tem conta? <button class="link-btn" onclick="switchAuthTab('criar')">Criar agora</button></p>
-    </div>
-
-    <!-- ========== CRIAR CONTA (MULTI-STEP) ========== -->
-    <div class="auth-form" id="form-criar" style="display:none; flex-direction:column;">
-
-      <!-- Progress Steps -->
-      <div class="reg-steps" id="reg-steps">
-        <div class="reg-step active" id="rstep-1">
-          <div class="reg-step-circle">1</div>
-          <span>Identificação</span>
-        </div>
-        <div class="reg-step-line"></div>
-        <div class="reg-step" id="rstep-2">
-          <div class="reg-step-circle">2</div>
-          <span>Seu jogador</span>
-        </div>
-        <div class="reg-step-line"></div>
-        <div class="reg-step" id="rstep-3">
-          <div class="reg-step-circle">3</div>
-          <span>Conta</span>
-        </div>
-      </div>
-
-      <!-- Step 1: Nome + Nick -->
-      <div class="reg-panel active" id="reg-panel-1">
-        <div class="form-header">
-          <h2 class="form-title">Como você se chama?</h2>
-          <p class="form-sub">Seu nome real para a comunidade ver</p>
-        </div>
-
-        <div class="input-group">
-          <label class="input-label" for="reg-fullname">Seu nome</label>
-          <div class="input-wrap">
-            <span class="input-icon">👤</span>
-            <input type="text" id="reg-fullname" class="input-field" placeholder="Ex: Lucas, João, Vitin..." autocomplete="given-name" maxlength="30" />
-          </div>
-        </div>
-
-        <button class="btn-login-submit" onclick="regNextStep(1)" id="btn-reg-s1">
-          <span class="btn-text">Continuar</span>
-          <span class="btn-arrow">→</span>
+      <!-- Tabs -->
+      <div class="auth-tabs" id="auth-tabs">
+        <button class="auth-tab active" id="tab-entrar" onclick="switchAuthTab('entrar')">
+          <span class="tab-icon">🎮</span> Entrar
+        </button>
+        <button class="auth-tab" id="tab-criar" onclick="switchAuthTab('criar')">
+          <span class="tab-icon">✨</span> Criar Conta
         </button>
       </div>
 
-      <!-- Step 2: Seleção do Jogador (cards visuais) -->
-      <div class="reg-panel" id="reg-panel-2">
+      <!-- ========== ENTRAR ========== -->
+      <div class="auth-form" id="form-entrar" style="display:flex; flex-direction:column;">
         <div class="form-header">
-          <h2 class="form-title">Qual é o seu nick?</h2>
-          <p class="form-sub">Selecione seu personagem na line</p>
+          <h2 class="form-title">Bem-vindo de volta</h2>
+          <p class="form-sub">Entre com seu e-mail e senha</p>
         </div>
 
-        <div class="player-select-grid" id="player-select-grid">
-          <!-- Gerado por JS -->
+        <div class="input-group">
+          <label class="input-label" for="login-email">E-mail</label>
+          <div class="input-wrap">
+            <span class="input-icon">📧</span>
+            <input type="email" id="login-email" class="input-field" placeholder="seu@email.com" autocomplete="email" />
+          </div>
         </div>
 
-        <div class="reg-nav">
-          <button class="btn-back" onclick="regGoStep(1)">← Voltar</button>
-          <button class="btn-login-submit reg-next-btn" onclick="regNextStep(2)" id="btn-reg-s2">
+        <div class="input-group">
+          <label class="input-label" for="login-password">Senha</label>
+          <div class="input-wrap">
+            <span class="input-icon">🔒</span>
+            <input type="password" id="login-password" class="input-field" placeholder="••••••••"
+              autocomplete="current-password" />
+            <button class="input-eye" onclick="togglePw('login-password', this)" type="button" tabindex="-1"
+              aria-label="Ver senha">👁</button>
+          </div>
+        </div>
+
+        <button class="btn-login-submit" onclick="handleLogin()" id="btn-login">
+          <span class="btn-text">Entrar</span>
+          <span class="btn-arrow">→</span>
+        </button>
+
+        <p class="auth-switch-hint"><button class="link-btn" onclick="handleForgotPassword()">Esqueci minha
+            senha</button></p>
+
+        <p class="auth-switch-hint">Ainda não tem conta? <button class="link-btn" onclick="switchAuthTab('criar')">Criar
+            agora</button></p>
+      </div>
+
+      <!-- ========== CRIAR CONTA (MULTI-STEP) ========== -->
+      <div class="auth-form" id="form-criar" style="display:none; flex-direction:column;">
+
+        <!-- Progress Steps -->
+        <div class="reg-steps" id="reg-steps">
+          <div class="reg-step active" id="rstep-1">
+            <div class="reg-step-circle">1</div>
+            <span>Identificação</span>
+          </div>
+          <div class="reg-step-line"></div>
+          <div class="reg-step" id="rstep-2">
+            <div class="reg-step-circle">2</div>
+            <span>Seu jogador</span>
+          </div>
+          <div class="reg-step-line"></div>
+          <div class="reg-step" id="rstep-3">
+            <div class="reg-step-circle">3</div>
+            <span>Conta</span>
+          </div>
+        </div>
+
+        <!-- Step 1: Nome + Nick -->
+        <div class="reg-panel active" id="reg-panel-1">
+          <div class="form-header">
+            <h2 class="form-title">Como você se chama?</h2>
+            <p class="form-sub">Seu nome real para a comunidade ver</p>
+          </div>
+
+          <div class="input-group">
+            <label class="input-label" for="reg-fullname">Seu nome</label>
+            <div class="input-wrap">
+              <span class="input-icon">👤</span>
+              <input type="text" id="reg-fullname" class="input-field" placeholder="Ex: Lucas, João, Vitin..."
+                autocomplete="given-name" maxlength="30" />
+            </div>
+          </div>
+
+          <button class="btn-login-submit" onclick="regNextStep(1)" id="btn-reg-s1">
             <span class="btn-text">Continuar</span>
             <span class="btn-arrow">→</span>
           </button>
         </div>
-      </div>
 
-      <!-- Step 3: E-mail + Senha -->
-      <div class="reg-panel" id="reg-panel-3">
-        <div class="form-header">
-          <h2 class="form-title">Crie sua conta</h2>
-          <p class="form-sub">Último passo — quase lá!</p>
-        </div>
-
-        <!-- Preview do jogador selecionado -->
-        <div class="player-selected-preview" id="player-preview">
-          <div class="preview-av" id="preview-av"></div>
-          <div class="preview-info">
-            <div class="preview-name" id="preview-name"></div>
-            <div class="preview-nick" id="preview-nick"></div>
+        <!-- Step 2: Seleção do Jogador (cards visuais) -->
+        <div class="reg-panel" id="reg-panel-2">
+          <div class="form-header">
+            <h2 class="form-title">Qual é o seu nick?</h2>
+            <p class="form-sub">Selecione seu personagem na line</p>
           </div>
-          <button class="preview-change" onclick="regGoStep(2)" title="Trocar jogador">✏️</button>
-        </div>
 
-        <div class="input-group">
-          <label class="input-label" for="reg-email">E-mail</label>
-          <div class="input-wrap">
-            <span class="input-icon">📧</span>
-            <input type="email" id="reg-email" class="input-field" placeholder="seu@email.com" autocomplete="email" />
+          <div class="player-select-grid" id="player-select-grid">
+            <!-- Gerado por JS -->
+          </div>
+
+          <div class="reg-nav">
+            <button class="btn-back" onclick="regGoStep(1)">← Voltar</button>
+            <button class="btn-login-submit reg-next-btn" onclick="regNextStep(2)" id="btn-reg-s2">
+              <span class="btn-text">Continuar</span>
+              <span class="btn-arrow">→</span>
+            </button>
           </div>
         </div>
 
-        <div class="input-group">
-          <label class="input-label" for="reg-password">Senha</label>
-          <div class="input-wrap">
-            <span class="input-icon">🔒</span>
-            <input type="password" id="reg-password" class="input-field" placeholder="Mínimo 6 caracteres" autocomplete="new-password" />
-            <button class="input-eye" onclick="togglePw('reg-password', this)" type="button" tabindex="-1" aria-label="Ver senha">👁</button>
+        <!-- Step 3: E-mail + Senha -->
+        <div class="reg-panel" id="reg-panel-3">
+          <div class="form-header">
+            <h2 class="form-title">Crie sua conta</h2>
+            <p class="form-sub">Último passo — quase lá!</p>
           </div>
-          <div class="pw-strength-bar">
-            <div class="pw-strength-fill" id="pw-strength-fill"></div>
+
+          <!-- Preview do jogador selecionado -->
+          <div class="player-selected-preview" id="player-preview">
+            <div class="preview-av" id="preview-av"></div>
+            <div class="preview-info">
+              <div class="preview-name" id="preview-name"></div>
+              <div class="preview-nick" id="preview-nick"></div>
+            </div>
+            <button class="preview-change" onclick="regGoStep(2)" title="Trocar jogador">✏️</button>
           </div>
-          <div class="pw-strength-label" id="pw-strength-label"></div>
+
+          <div class="input-group">
+            <label class="input-label" for="reg-email">E-mail</label>
+            <div class="input-wrap">
+              <span class="input-icon">📧</span>
+              <input type="email" id="reg-email" class="input-field" placeholder="seu@email.com" autocomplete="email" />
+            </div>
+          </div>
+
+          <div class="input-group">
+            <label class="input-label" for="reg-password">Senha</label>
+            <div class="input-wrap">
+              <span class="input-icon">🔒</span>
+              <input type="password" id="reg-password" class="input-field" placeholder="Mínimo 6 caracteres"
+                autocomplete="new-password" />
+              <button class="input-eye" onclick="togglePw('reg-password', this)" type="button" tabindex="-1"
+                aria-label="Ver senha">👁</button>
+            </div>
+            <div class="pw-strength-bar">
+              <div class="pw-strength-fill" id="pw-strength-fill"></div>
+            </div>
+            <div class="pw-strength-label" id="pw-strength-label"></div>
+          </div>
+
+          <div class="reg-nav">
+            <button class="btn-back" onclick="regGoStep(2)">← Voltar</button>
+            <button class="btn-login-submit reg-next-btn" onclick="handleRegister()" id="btn-register">
+              <span class="btn-text">Criar Conta</span>
+              <span class="btn-arrow">🚀</span>
+            </button>
+          </div>
         </div>
 
-        <div class="reg-nav">
-          <button class="btn-back" onclick="regGoStep(2)">← Voltar</button>
-          <button class="btn-login-submit reg-next-btn" onclick="handleRegister()" id="btn-register">
-            <span class="btn-text">Criar Conta</span>
-            <span class="btn-arrow">🚀</span>
-          </button>
+        <p class="auth-switch-hint" style="margin-top:16px">Já tem conta? <button class="link-btn"
+            onclick="switchAuthTab('entrar')">Entrar</button></p>
+      </div>
+
+    </div>
+    <!-- /auth-container -->
+
+  </div>
+  <!-- /LOGIN SCREEN -->
+
+  <!-- HEADER -->
+  <header id="main-header" style="display:none">
+    <div class="logo">
+      <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
+        <circle cx="11" cy="11" r="9.5" stroke="currentColor" stroke-width="1.6" />
+        <circle cx="11" cy="11" r="2" fill="currentColor" />
+        <line x1="11" y1="1.5" x2="11" y2="6" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" />
+        <line x1="11" y1="16" x2="11" y2="20.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" />
+        <line x1="1.5" y1="11" x2="6" y2="11" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" />
+        <line x1="16" y1="11" x2="20.5" y2="11" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" />
+      </svg>
+      <div class="logo-wrap">
+        <span>CS2 RATINGS</span>
+        <span class="logo-sub">LINE OFICIAL 2026</span>
+      </div>
+    </div>
+
+    <nav class="nav-center">
+      <button class="nav-btn active" onclick="nav('colecao')" id="nav-colecao">Cartinhas</button>
+      <button class="nav-btn" onclick="nav('clips')" id="nav-clips">Clips</button>
+      <button class="nav-btn" onclick="nav('avaliar')" id="nav-avaliar">Avaliar</button>
+      <button class="nav-btn" onclick="nav('matamata')" id="nav-matamata">Mata-Mata</button>
+    </nav>
+
+    <div class="header-user">
+      <div class="user-badge">
+        <div class="user-badge-av" id="header-avatar"></div>
+        <div class="user-badge-name" id="header-name"></div>
+      </div>
+      <button class="btn-logout" onclick="logout()">Sair</button>
+    </div>
+  </header>
+
+  <div id="toast-box"></div>
+
+  <!-- Card Result Overlay -->
+  <div class="card-overlay" id="card-overlay">
+    <div class="card-overlay-title">🏆 CARTINHA GERADA</div>
+    <div id="card-overlay-content"></div>
+    <div class="card-overlay-actions">
+      <button class="btn btn-dark" onclick="closeCardOverlay()">Fechar</button>
+      <button class="btn btn-gold" onclick="nav('colecao'); closeCardOverlay();">Ver Coleção</button>
+    </div>
+  </div>
+
+  <!-- Player Detail Modal -->
+  <div class="overlay" id="detail-modal">
+    <div class="modal-box detail-modal">
+      <div id="detail-content"></div>
+      <div class="modal-actions">
+        <button class="btn btn-ghost" onclick="closeModal('detail-modal')">Fechar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Cropper Modal -->
+  <div class="overlay" id="cropper-modal">
+    <div class="modal-box" style="max-width: 400px; padding: 20px;">
+      <div class="modal-title" style="font-size: 18px">✂️ Ajustar Foto</div>
+      <div class="modal-sub">Arraste para mover. Use o scroll (ou pinça) para zoom.</div>
+
+      <div id="cropper-canvas-wrap">
+        <canvas id="cropper-canvas"></canvas>
+        <div id="cropper-guide"></div>
+      </div>
+
+      <div class="modal-actions" style="margin-top: 0">
+        <button class="btn btn-ghost btn-sm" onclick="closeModal('cropper-modal')">Cancelar</button>
+        <button class="btn btn-gold btn-sm" onclick="confirmCrop()" style="margin-left:auto">Cortar e Salvar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- New Clip Modal -->
+  <div class="overlay" id="modal-new-clip">
+    <div class="modal-box">
+      <div class="modal-title">🎬 Postar Clip</div>
+      <div class="modal-sub">Cole um link de vídeo ou faça upload de uma imagem.</div>
+
+      <input type="text" id="clip-title" class="input-box" placeholder="Título (ex: Clutch 1v3 mirage)" />
+      <textarea id="clip-desc" class="input-box" placeholder="Descrição opcional..."></textarea>
+
+      <div class="panel-label">Mídia</div>
+      <input type="text" id="clip-url" class="input-box" placeholder="Link do YouTube, Twitch, etc..." />
+      <div style="text-align: center; color: var(--text-sec); font-size: 12px; margin: -4px 0 8px;">OU</div>
+
+      <input type="file" id="clip-image-input" accept="image/*" class="hidden-file"
+        onchange="handleClipImageSelect(event)" />
+      <label for="clip-image-input" class="btn btn-dark btn-block" style="margin-bottom: 12px">📸 Upload de Imagem
+        (Screenshot)</label>
+      <div id="clip-image-preview" style="display:none; text-align:center; margin-bottom: 12px">
+        <img src="" style="max-width:100%; border-radius:var(--radius-sm); border:1px solid var(--border)" />
+        <button class="btn btn-ghost btn-sm"
+          onclick="document.getElementById('clip-image-preview').style.display='none'; document.getElementById('clip-image-input').value='';"
+          style="margin-top:8px">Remover imagem</button>
+      </div>
+
+      <div class="modal-actions">
+        <button class="btn btn-ghost" onclick="closeModal('modal-new-clip')">Cancelar</button>
+        <button class="btn btn-gold" onclick="submitClip()">Postar</button>
+      </div>
+    </div>
+  </div>
+
+  <main id="main-content" style="display:none">
+
+    <!-- ===== CARTINHAS (COLEÇÃO) ===== -->
+    <section class="section active" id="section-colecao">
+      <div
+        style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 22px; flex-wrap: wrap; gap: 12px;">
+        <div>
+          <h1 class="page-title">Coleção <span>Oficial</span></h1>
+          <p class="page-sub">Média de todas as avaliações — clique para ver detalhes e trocar foto</p>
         </div>
       </div>
-
-      <p class="auth-switch-hint" style="margin-top:16px">Já tem conta? <button class="link-btn" onclick="switchAuthTab('entrar')">Entrar</button></p>
-    </div>
-
-  </div>
-  <!-- /auth-container -->
-
-</div>
-<!-- /LOGIN SCREEN -->
-
-<!-- HEADER -->
-<header id="main-header" style="display:none">
-  <div class="logo">
-    <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
-      <circle cx="11" cy="11" r="9.5" stroke="currentColor" stroke-width="1.6"/>
-      <circle cx="11" cy="11" r="2" fill="currentColor"/>
-      <line x1="11" y1="1.5" x2="11" y2="6" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
-      <line x1="11" y1="16" x2="11" y2="20.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
-      <line x1="1.5" y1="11" x2="6" y2="11" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
-      <line x1="16" y1="11" x2="20.5" y2="11" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
-    </svg>
-    <div class="logo-wrap">
-      <span>CS2 RATINGS</span>
-      <span class="logo-sub">LINE OFICIAL 2026</span>
-    </div>
-  </div>
-  
-  <nav class="nav-center">
-    <button class="nav-btn active" onclick="nav('colecao')" id="nav-colecao">Cartinhas</button>
-    <button class="nav-btn" onclick="nav('clips')" id="nav-clips">Clips</button>
-    <button class="nav-btn" onclick="nav('avaliar')" id="nav-avaliar">Avaliar</button>
-    <button class="nav-btn" onclick="nav('matamata')" id="nav-matamata">Mata-Mata</button>
-  </nav>
-
-  <div class="header-user">
-    <div class="user-badge">
-      <div class="user-badge-av" id="header-avatar"></div>
-      <div class="user-badge-name" id="header-name"></div>
-    </div>
-    <button class="btn-logout" onclick="logout()">Sair</button>
-  </div>
-</header>
-
-<div id="toast-box"></div>
-
-<!-- Card Result Overlay -->
-<div class="card-overlay" id="card-overlay">
-  <div class="card-overlay-title">🏆 CARTINHA GERADA</div>
-  <div id="card-overlay-content"></div>
-  <div class="card-overlay-actions">
-    <button class="btn btn-dark" onclick="closeCardOverlay()">Fechar</button>
-    <button class="btn btn-gold" onclick="nav('colecao'); closeCardOverlay();">Ver Coleção</button>
-  </div>
-</div>
-
-<!-- Player Detail Modal -->
-<div class="overlay" id="detail-modal">
-  <div class="modal-box detail-modal">
-    <div id="detail-content"></div>
-    <div class="modal-actions">
-      <button class="btn btn-ghost" onclick="closeModal('detail-modal')">Fechar</button>
-    </div>
-  </div>
-</div>
-
-<!-- Cropper Modal -->
-<div class="overlay" id="cropper-modal">
-  <div class="modal-box" style="max-width: 400px; padding: 20px;">
-    <div class="modal-title" style="font-size: 18px">✂️ Ajustar Foto</div>
-    <div class="modal-sub">Arraste para mover. Use o scroll (ou pinça) para zoom.</div>
-    
-    <div id="cropper-canvas-wrap">
-      <canvas id="cropper-canvas"></canvas>
-      <div id="cropper-guide"></div>
-    </div>
-    
-    <div class="modal-actions" style="margin-top: 0">
-      <button class="btn btn-ghost btn-sm" onclick="closeModal('cropper-modal')">Cancelar</button>
-      <button class="btn btn-gold btn-sm" onclick="confirmCrop()" style="margin-left:auto">Cortar e Salvar</button>
-    </div>
-  </div>
-</div>
-
-<!-- New Clip Modal -->
-<div class="overlay" id="modal-new-clip">
-  <div class="modal-box">
-    <div class="modal-title">🎬 Postar Clip</div>
-    <div class="modal-sub">Cole um link de vídeo ou faça upload de uma imagem.</div>
-    
-    <input type="text" id="clip-title" class="input-box" placeholder="Título (ex: Clutch 1v3 mirage)" />
-    <textarea id="clip-desc" class="input-box" placeholder="Descrição opcional..."></textarea>
-    
-    <div class="panel-label">Mídia</div>
-    <input type="text" id="clip-url" class="input-box" placeholder="Link do YouTube, Twitch, etc..." />
-    <div style="text-align: center; color: var(--text-sec); font-size: 12px; margin: -4px 0 8px;">OU</div>
-    
-    <input type="file" id="clip-image-input" accept="image/*" class="hidden-file" onchange="handleClipImageSelect(event)" />
-    <label for="clip-image-input" class="btn btn-dark btn-block" style="margin-bottom: 12px">📸 Upload de Imagem (Screenshot)</label>
-    <div id="clip-image-preview" style="display:none; text-align:center; margin-bottom: 12px">
-      <img src="" style="max-width:100%; border-radius:var(--radius-sm); border:1px solid var(--border)" />
-      <button class="btn btn-ghost btn-sm" onclick="document.getElementById('clip-image-preview').style.display='none'; document.getElementById('clip-image-input').value='';" style="margin-top:8px">Remover imagem</button>
-    </div>
-
-    <div class="modal-actions">
-      <button class="btn btn-ghost" onclick="closeModal('modal-new-clip')">Cancelar</button>
-      <button class="btn btn-gold" onclick="submitClip()">Postar</button>
-    </div>
-  </div>
-</div>
-
-<main id="main-content" style="display:none">
-
-  <!-- ===== CARTINHAS (COLEÇÃO) ===== -->
-  <section class="section active" id="section-colecao">
-    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 22px; flex-wrap: wrap; gap: 12px;">
-      <div>
-        <h1 class="page-title">Coleção <span>Oficial</span></h1>
-        <p class="page-sub">Média de todas as avaliações — clique para ver detalhes e trocar foto</p>
+      <div class="tier-ref">
+        <span class="tier-chip"
+          style="background:rgba(200,80,255,.15);color:#E040FB;border:1px solid rgba(200,80,255,.3)">👑 90–99
+          Fenômeno</span>
+        <span class="tier-chip"
+          style="background:rgba(255,215,0,.12);color:#FFD700;border:1px solid rgba(200,160,0,.3)">⭐ 80–89
+          Excelente</span>
+        <span class="tier-chip"
+          style="background:rgba(139,165,192,.12);color:#8BA5C0;border:1px solid rgba(139,165,192,.3)">🥈 70–79 Muito
+          Bom</span>
+        <span class="tier-chip"
+          style="background:rgba(139,90,42,.15);color:#D4956A;border:1px solid rgba(139,90,42,.3)">🥉 60–69 Bom</span>
+        <span class="tier-chip"
+          style="background:rgba(64,74,88,.15);color:#607080;border:1px solid rgba(64,74,88,.3)">🎮 &lt;60 Treino</span>
       </div>
-    </div>
-    <div class="tier-ref">
-      <span class="tier-chip" style="background:rgba(200,80,255,.15);color:#E040FB;border:1px solid rgba(200,80,255,.3)">👑 90–99 Fenômeno</span>
-      <span class="tier-chip" style="background:rgba(255,215,0,.12);color:#FFD700;border:1px solid rgba(200,160,0,.3)">⭐ 80–89 Excelente</span>
-      <span class="tier-chip" style="background:rgba(139,165,192,.12);color:#8BA5C0;border:1px solid rgba(139,165,192,.3)">🥈 70–79 Muito Bom</span>
-      <span class="tier-chip" style="background:rgba(139,90,42,.15);color:#D4956A;border:1px solid rgba(139,90,42,.3)">🥉 60–69 Bom</span>
-      <span class="tier-chip" style="background:rgba(64,74,88,.15);color:#607080;border:1px solid rgba(64,74,88,.3)">🎮 &lt;60 Treino</span>
-    </div>
-    <div id="collection-container"></div>
-  </section>
+      <div id="collection-container"></div>
+    </section>
 
-  <!-- ===== CLIPS FEED ===== -->
-  <section class="section" id="section-clips">
-    <div class="feed-container">
-      <div style="text-align: center; margin-bottom: 30px;">
-        <h1 class="page-title">Clips <span>Feed</span></h1>
-        <p class="page-sub">Compartilhe suas jogadas, reaja e comente!</p>
+    <!-- ===== CLIPS FEED ===== -->
+    <section class="section" id="section-clips">
+      <div class="feed-container">
+        <div style="text-align: center; margin-bottom: 30px;">
+          <h1 class="page-title">Clips <span>Feed</span></h1>
+          <p class="page-sub">Compartilhe suas jogadas, reaja e comente!</p>
+        </div>
+        <div id="clips-container"></div>
       </div>
-      <div id="clips-container"></div>
-    </div>
-    <button class="fab" onclick="openModal('modal-new-clip')" title="Postar novo clip">+</button>
-  </section>
+      <button class="fab" onclick="openModal('modal-new-clip')" title="Postar novo clip">+</button>
+    </section>
 
-  <!-- ===== AVALIAR ===== -->
-  <section class="section" id="section-avaliar">
-    <div id="eval-view"></div>
-  </section>
+    <!-- ===== AVALIAR ===== -->
+    <section class="section" id="section-avaliar">
+      <div id="eval-view"></div>
+    </section>
 
-  <!-- ===== MATA-MATA ===== -->
-  <section class="section" id="section-matamata">
-    <h1 class="page-title">Perguntas <span>Mata-Mata</span></h1>
-    <p class="page-sub">Resultados das votações diretas</p>
-    <div id="mm-results-container"></div>
-  </section>
+    <!-- ===== MATA-MATA ===== -->
+    <section class="section" id="section-matamata">
+      <h1 class="page-title">Perguntas <span>Mata-Mata</span></h1>
+      <p class="page-sub">Resultados das votações diretas</p>
+      <div id="mm-results-container"></div>
+    </section>
 
-</main>
+  </main>
 
-<script src="script.js"></script>
+  <script src="script.js"></script>
 </body>
+
 </html>

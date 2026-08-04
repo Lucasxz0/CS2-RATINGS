@@ -54,6 +54,11 @@ let globalState = { players: [], evaluations: [], mataMataVotes: [], clips: [], 
 let currentUser = null; // Supabase user
 let loggedInPlayerId = null; // Ex: 'vitin'
 
+// Mapa auth.users.id -> player_key ('vitin', 'joao', ...), montado a partir da
+// tabela `profiles`. É a ÚNICA fonte confiável para saber "de qual jogador é essa
+// conta", já que auth.users.id e players.id são espaços de UUID diferentes.
+let profilesMap = {};
+
 // =========================================
 // UTILS & MATH
 // =========================================
@@ -69,6 +74,23 @@ function avgAttrs(evals) {
   return avg;
 }
 function initials(name) { return name ? name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2) : '??'; }
+
+// Só permite http/https — evita XSS via esquemas como javascript: em links postados por usuários
+function isSafeUrl(url) {
+  try {
+    const u = new URL(url, window.location.href);
+    return u.protocol === 'http:' || u.protocol === 'https:';
+  } catch { return false; }
+}
+
+const AUTH_ERROR_MAP = {
+  'Invalid login credentials': 'E-mail ou senha incorretos.',
+  'User already registered': 'Este e-mail já está cadastrado.',
+  'Email not confirmed': 'Confirme seu e-mail antes de entrar.',
+  'Password should be at least 6 characters': 'A senha deve ter pelo menos 6 caracteres.',
+  'Unable to validate email address: invalid format': 'E-mail inválido.',
+};
+function translateAuthError(msg) { return AUTH_ERROR_MAP[msg] || msg; }
 function toast(msg, type = 'inf') {
   const el = document.createElement('div'); el.className = `toast ${type}`;
   const ic = { ok: '✓', err: '✗', inf: '●' }; const cl = { ok: '#43A047', err: '#E53935', inf: 'var(--accent)' };
@@ -143,18 +165,28 @@ function updatePwStrength(pw) {
 let regData = { fullName: '', playerKey: '' };
 let regCurrentStep = 1;
 
-function renderPlayerSelectGrid() {
+async function renderPlayerSelectGrid() {
   const grid = document.getElementById('player-select-grid');
   if (!grid) return;
-  grid.innerHTML = DEFAULT_PLAYERS.map(p => `
-    <div class="player-card-sel ${regData.playerKey === p.id ? 'selected' : ''}" 
-         onclick="selectPlayer('${p.id}')" id="pcard-${p.id}">
+
+  let takenKeys = [];
+  try {
+    const { data } = await supabase.from('profiles').select('player_key');
+    takenKeys = (data || []).map(r => r.player_key);
+  } catch (err) { console.error('Erro ao checar personagens ocupados', err); }
+
+  grid.innerHTML = DEFAULT_PLAYERS.map(p => {
+    const taken = takenKeys.includes(p.id);
+    return `
+    <div class="player-card-sel ${regData.playerKey === p.id ? 'selected' : ''} ${taken ? 'taken' : ''}"
+         onclick="${taken ? '' : `selectPlayer('${p.id}')`}" id="pcard-${p.id}" title="${taken ? 'Já escolhido por outra pessoa' : ''}">
       <div class="player-card-check">✓</div>
       <div class="player-card-av">${p.photo ? `<img src="${esc(p.photo)}">` : initials(p.name)}</div>
       <div class="player-card-name">${esc(p.name)}</div>
       <div class="player-card-nick">${esc(p.apelido)}</div>
-    </div>
-  `).join('');
+      ${taken ? `<div class="player-card-taken-lbl">Ocupado</div>` : ''}
+    </div>`;
+  }).join('');
 }
 
 function selectPlayer(id) {
@@ -235,12 +267,12 @@ function switchAuthTab(tab) {
 
   // Mostrar/esconder forms diretamente via style (evita problemas de CSS specificity)
   const fEntrar = document.getElementById('form-entrar');
-  const fCriar  = document.getElementById('form-criar');
+  const fCriar = document.getElementById('form-criar');
 
   fEntrar.style.display = (tab === 'entrar') ? 'flex' : 'none';
   fEntrar.style.flexDirection = 'column';
 
-  fCriar.style.display  = (tab === 'criar')  ? 'flex' : 'none';
+  fCriar.style.display = (tab === 'criar') ? 'flex' : 'none';
   fCriar.style.flexDirection = 'column';
 
   if (tab === 'criar') {
@@ -266,8 +298,18 @@ async function handleLogin() {
   btn.disabled = false;
   btn.innerHTML = '<span class="btn-text">Entrar</span><span class="btn-arrow">→</span>';
 
-  if (error) { toast('Erro: ' + error.message, 'err'); return; }
+  if (error) { toast('Erro: ' + translateAuthError(error.message), 'err'); return; }
   toast('Login efetuado! Bem-vindo de volta 🎮', 'ok');
+}
+
+async function handleForgotPassword() {
+  const email = document.getElementById('login-email').value.trim();
+  if (!email) { shakeInput('login-email'); return toast('Digite seu e-mail para recuperar a senha.', 'err'); }
+  const { error } = await supabase.auth.resetPasswordForEmail(email, {
+    redirectTo: window.location.origin + window.location.pathname
+  });
+  if (error) { toast('Erro: ' + translateAuthError(error.message), 'err'); return; }
+  toast('Enviamos um link de recuperação para o seu e-mail! 📧', 'ok');
 }
 
 async function handleRegister() {
@@ -283,6 +325,15 @@ async function handleRegister() {
   btn.disabled = true;
   btn.innerHTML = '<span class="btn-text">Criando conta</span><span class="btn-arrow">⏳</span>';
 
+  // Checa se o personagem já foi escolhido por outra conta antes de criar o usuário
+  const { data: taken } = await supabase.from('profiles').select('player_key').eq('player_key', regData.playerKey).maybeSingle();
+  if (taken) {
+    btn.disabled = false;
+    btn.innerHTML = '<span class="btn-text">Criar Conta</span><span class="btn-arrow">🚀</span>';
+    regGoStep(2);
+    return toast('Esse personagem já foi escolhido por outra pessoa. Selecione outro!', 'err');
+  }
+
   const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
     email, password: pass,
     options: { data: { player_key: regData.playerKey, full_name: regData.fullName } }
@@ -291,7 +342,7 @@ async function handleRegister() {
   if (signUpError) {
     btn.disabled = false;
     btn.innerHTML = '<span class="btn-text">Criar Conta</span><span class="btn-arrow">🚀</span>';
-    toast('Erro ao criar conta: ' + signUpError.message, 'err');
+    toast('Erro ao criar conta: ' + translateAuthError(signUpError.message), 'err');
     return;
   }
 
@@ -305,6 +356,18 @@ async function handleRegister() {
     // Conta criada mas email precisa ser confirmado
     toast('Conta criada! Verifique seu e-mail para confirmar e depois faça login. 📧', 'ok');
     switchAuthTab('entrar');
+    return;
+  }
+
+  // Vincula a conta ao personagem escolhido na tabela profiles.
+  // O UNIQUE em profiles.player_key protege contra corrida (duas pessoas
+  // escolhendo o mesmo personagem ao mesmo tempo).
+  const { error: profileError } = await supabase.from('profiles').insert({
+    id: loginData.user.id, player_key: regData.playerKey, full_name: regData.fullName
+  });
+  if (profileError) {
+    toast('Este personagem acabou de ser escolhido por outra pessoa. Fale com um admin.', 'err');
+    await supabase.auth.signOut();
     return;
   }
 
@@ -365,14 +428,25 @@ async function fetchAllData() {
   // Inicializar com jogadores padrão caso o banco esteja vazio
   globalState.players = [...DEFAULT_PLAYERS];
 
+  // Garante que todos os jogadores padrão existem na tabela `players` (idempotente)
+  await seedPlayers();
+
   try {
-    const [playersRes, evalsRes, mmRes, clipsRes, commRes] = await Promise.all([
+    const [playersRes, evalsRes, mmRes, clipsRes, commRes, profilesRes] = await Promise.all([
       supabase.from('players').select('*'),
       supabase.from('evaluations').select('*'),
       supabase.from('mata_mata_votes').select('*'),
       supabase.from('clips').select('*'),
-      supabase.from('comments').select('*')
+      supabase.from('comments').select('*'),
+      supabase.from('profiles').select('*')
     ]);
+
+    // Monta o mapa auth_id -> player_key ANTES de processar as outras tabelas,
+    // pois evaluations/mata_mata_votes/clips/comments dependem dele.
+    profilesMap = {};
+    if (profilesRes.data) {
+      profilesRes.data.forEach(pr => { profilesMap[pr.id] = pr.player_key; });
+    }
 
     if (playersRes.data && playersRes.data.length > 0) {
       // Merge players db with defaults
@@ -393,27 +467,28 @@ async function fetchAllData() {
     if (evalsRes.data) {
       globalState.evaluations = evalsRes.data.map(e => ({
         ...e,
-        // Map uuids back to string ids
-        evaluatorId: getPlayerKeyByUUID(e.evaluator_id),
-        playerId: getPlayerKeyByUUID(e.player_id),
+        // evaluator_id é auth.users.id -> passa por profiles; player_id é players.id
+        evaluatorId: getPlayerKeyByAuthId(e.evaluator_id),
+        playerId: getPlayerKeyByPlayersId(e.player_id),
       }));
     }
 
     if (mmRes.data) {
       globalState.mataMataVotes = mmRes.data.map(m => ({
-        ...m, evaluatorId: getPlayerKeyByUUID(m.evaluator_id)
+        ...m, evaluatorId: getPlayerKeyByAuthId(m.evaluator_id)
       }));
     }
 
     if (clipsRes.data) {
       globalState.clips = clipsRes.data.map(c => ({
-        ...c, playerId: getPlayerKeyByUUID(c.player_id), mediaType: c.media_type, mediaUrl: c.media_url
+        // clips.player_id é auth.users.id (quem postou), não players.id
+        ...c, playerId: getPlayerKeyByAuthId(c.player_id), mediaType: c.media_type, mediaUrl: c.media_url
       }));
     }
 
     if (commRes.data) {
       globalState.comments = commRes.data.map(cm => ({
-        ...cm, playerId: getPlayerKeyByUUID(cm.player_id), clipId: cm.clip_id
+        ...cm, playerId: getPlayerKeyByAuthId(cm.player_id), clipId: cm.clip_id
       }));
     }
   } catch (err) {
@@ -422,15 +497,43 @@ async function fetchAllData() {
   }
 }
 
-function getPlayerKeyByUUID(uuid) {
-  // Simples utilitário. No sistema final, a tabela Auth cruza com Players
-  // Por enquanto, isso evita quebras caso o UUID não ache de imediato
-  return loggedInPlayerId || 'vitin';
+// player_id em `evaluations` e `player_id` em `players` referenciam a tabela
+// `players` (players.id / "db_id"). Use esta função para traduzir esse tipo de UUID.
+function getPlayerKeyByPlayersId(uuid) {
+  const p = globalState.players.find(x => x.db_id === uuid);
+  return p ? p.id : null;
+}
+
+// evaluator_id em `evaluations`/`mata_mata_votes` e player_id em `clips`/`comments`
+// na verdade guardam o UUID de auth.users (quem está logado), não players.id.
+// Para traduzir esse UUID em player_key, é preciso passar por `profiles`.
+function getPlayerKeyByAuthId(uuid) {
+  return profilesMap[uuid] || null;
+}
+
+// Retorna o objeto jogador completo a partir de um auth.users.id (usado em clips/comments)
+function getPlayerByAuthId(uuid) {
+  const key = profilesMap[uuid];
+  return key ? globalState.players.find(p => p.id === key) : null;
 }
 
 function getPlayerUUIDByKey(key) {
   const p = globalState.players.find(x => x.id === key);
   return p ? p.db_id : null;
+}
+
+// Garante que todo jogador de DEFAULT_PLAYERS exista na tabela `players` desde o
+// início, com um db_id válido — antes disso, avaliações sobre jogadores que ainda
+// não tinham foto enviada eram descartadas silenciosamente em submitEvaluation().
+async function seedPlayers() {
+  try {
+    const rows = DEFAULT_PLAYERS.map(p => ({
+      player_key: p.id, name: p.name, apelido: p.apelido, role: p.role, team: p.team
+    }));
+    await supabase.from('players').upsert(rows, { onConflict: 'player_key' });
+  } catch (err) {
+    console.error('Erro ao popular players', err);
+  }
 }
 
 function updateHeader() {
@@ -683,19 +786,30 @@ function renderClips() {
   const sorted = [...globalState.clips].sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
 
   cCont.innerHTML = sorted.map(c => {
-    const author = globalState.players.find(p => p.db_id === c.player_id) || { name: 'Desconhecido' };
+    const author = getPlayerByAuthId(c.player_id) || { name: 'Desconhecido' };
     const dt = new Date(c.created_at).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
 
     let mediaHtml = '';
     if (c.media_type === 'image') {
-      mediaHtml = `<div class="img-wrap"><img src="${c.media_url}"></div>`;
-    } else if (c.media_url) {
+      mediaHtml = `<div class="img-wrap"><img src="${esc(c.media_url)}"></div>`;
+    } else if (c.media_url && isSafeUrl(c.media_url)) {
       let embedSrc = '';
-      if (c.media_url.includes('youtube.com/watch')) { const v = new URL(c.media_url).searchParams.get('v'); embedSrc = `https://www.youtube.com/embed/${v}`; }
-      else if (c.media_url.includes('youtu.be/')) { const v = c.media_url.split('youtu.be/')[1].split('?')[0]; embedSrc = `https://www.youtube.com/embed/${v}`; }
-      else if (c.media_url.includes('twitch.tv')) { const clipId = c.media_url.split('/').pop().split('?')[0]; embedSrc = `https://clips.twitch.tv/embed?clip=${clipId}&parent=${window.location.hostname}`; }
-      if (embedSrc) mediaHtml = `<div class="vid-wrap"><iframe src="${embedSrc}" allowfullscreen></iframe></div>`;
-      else mediaHtml = `<div style="padding:16px;text-align:center"><a href="${esc(c.media_url)}" target="_blank" style="color:var(--accent)">🔗 Acessar Link Externo</a></div>`;
+      try {
+        if (c.media_url.includes('youtube.com/watch')) {
+          const v = new URL(c.media_url).searchParams.get('v');
+          if (v && /^[a-zA-Z0-9_-]{6,20}$/.test(v)) embedSrc = `https://www.youtube.com/embed/${v}`;
+        } else if (c.media_url.includes('youtu.be/')) {
+          const v = c.media_url.split('youtu.be/')[1]?.split('?')[0];
+          if (v && /^[a-zA-Z0-9_-]{6,20}$/.test(v)) embedSrc = `https://www.youtube.com/embed/${v}`;
+        } else if (c.media_url.includes('twitch.tv')) {
+          const clipId = c.media_url.split('/').pop().split('?')[0];
+          if (clipId && /^[a-zA-Z0-9_-]{5,60}$/.test(clipId)) embedSrc = `https://clips.twitch.tv/embed?clip=${clipId}&parent=${window.location.hostname}`;
+        }
+      } catch { /* URL malformada, cai no link externo abaixo */ }
+      if (embedSrc) mediaHtml = `<div class="vid-wrap"><iframe src="${esc(embedSrc)}" allowfullscreen></iframe></div>`;
+      else mediaHtml = `<div style="padding:16px;text-align:center"><a href="${esc(c.media_url)}" target="_blank" rel="noopener noreferrer" style="color:var(--accent)">🔗 Acessar Link Externo</a></div>`;
+    } else if (c.media_url) {
+      mediaHtml = `<div style="padding:16px;text-align:center;color:var(--text-sec)">⚠️ Link inválido</div>`;
     }
 
     const rFire = c.reactions?.fire || []; const rNasty = c.reactions?.nasty || []; const rLol = c.reactions?.lol || [];
@@ -704,7 +818,7 @@ function renderClips() {
     // Filter comments for this clip
     const cComments = globalState.comments.filter(cm => cm.clip_id === c.id);
     const commentsHtml = cComments.map(cm => {
-      const p = globalState.players.find(x => x.db_id === cm.player_id);
+      const p = getPlayerByAuthId(cm.player_id);
       return `<div class="comment-item"><span class="comment-author">${esc(p ? p.name : 'Alguém')}:</span><span class="comment-text">${esc(cm.text)}</span></div>`;
     }).join('');
 
