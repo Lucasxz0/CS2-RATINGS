@@ -589,7 +589,10 @@ function buildCard(player, attrs, overall, tier, size = 'big') {
   const left = CARD_ATTRS_LEFT.map(k => { const a = ATTRS.find(x => x.key === k); return `<div class="card-stat"><span class="card-stat-icon">${a.icon}</span><span class="card-statval">${attrs ? attrs[k] ?? '—' : '—'}</span><span class="card-statlbl">${a.short}</span></div>`; }).join('');
   const right = CARD_ATTRS_RIGHT.map(k => { const a = ATTRS.find(x => x.key === k); return `<div class="card-stat"><span class="card-stat-icon">${a.icon}</span><span class="card-statval">${attrs ? attrs[k] ?? '—' : '—'}</span><span class="card-statlbl">${a.short}</span></div>`; }).join('');
 
-  return `<div class="fifa-card ${tc}"><div class="card-bg"></div>
+  // Aplica cor personalizada se existir (override CSS custom properties)
+  const colorStyle = player.card_color ? `style="--accent:${player.card_color}; --accent-glow:${player.card_color}66"` : '';
+
+  return `<div class="fifa-card ${tc}" ${colorStyle}><div class="card-bg"></div>
     <div class="card-photo" ${photoBg}>${placeholder}</div>
     <div class="card-deco top"></div><div class="card-deco bot"></div>
     <div class="card-top-left"><div class="card-ovr">${overall !== null ? overall : '??'}</div><div class="card-pos">${esc(player.role)}</div><div class="card-team-sm">${esc(player.team)}</div></div>
@@ -625,6 +628,33 @@ function openDetailModal(playerId) {
   let tableRows = evals.map(ev => `<tr><td>${esc(globalState.players.find(p => p.id === ev.evaluatorId)?.name || ev.evaluatorId)}</td>${ATTRS.map(a => `<td class="vm">${ev[a.key] ?? '—'}</td>`).join('')}<td class="vm" style="font-size:15px">${calcOverall(ev)}</td></tr>`).join('');
   let avgRow = avg ? `<tr style="background:rgba(255,184,0,0.08)"><td style="font-weight:700;color:var(--accent)">MÉDIA</td>${ATTRS.map(a => `<td class="vm" style="color:var(--accent)">${avg[a.key]}</td>`).join('')}<td class="vm" style="color:var(--accent);font-size:15px">${overall}</td></tr>` : '';
 
+  let colorPicker = '';
+  if (playerId === loggedInPlayerId) {
+    const colors = [
+      { name: 'Amarelo', hex: '#F2C411' },
+      { name: 'Roxo', hex: '#A01C95' },
+      { name: 'Verde', hex: '#019E5A' },
+      { name: 'Azul', hex: '#5696F6' },
+      { name: 'Laranja', hex: '#ED7D10' },
+      { name: 'Padrão', hex: '' }
+    ];
+    colorPicker = `
+    <div style="margin-top:20px; padding-top:16px; border-top:1px solid rgba(255,255,255,0.05)">
+      <div style="font-size:12px; color:var(--text-sec); margin-bottom:10px; font-weight:700; text-transform:uppercase; letter-spacing:1px;">Sua Cor (CS2)</div>
+      <div style="display:flex; gap:10px; flex-wrap:wrap;">
+        ${colors.map(c => `
+          <button type="button" 
+                  class="color-btn" 
+                  style="background:${c.hex || 'var(--bg-elevated)'}; width:36px; height:36px; border-radius:50%; border:2px solid ${(player.card_color || '') === c.hex ? 'white' : 'transparent'}; cursor:pointer; transition:transform 0.2s;"
+                  onclick="setCardColor('${playerId}', '${c.hex}')" title="${c.name}">
+            ${!c.hex ? '✖' : ''}
+          </button>
+        `).join('')}
+      </div>
+      <div style="font-size:11px; color:var(--text-muted); margin-top:8px;">Escolha a cor da sua cartinha, igual no CS.</div>
+    </div>`;
+  }
+
   document.getElementById('detail-content').innerHTML = `
     <div class="detail-top">
       <div class="detail-meta">
@@ -636,11 +666,39 @@ function openDetailModal(playerId) {
           <input type="file" id="file-photo-${playerId}" accept="image/*" class="hidden-file" onchange="initCrop(event, '${playerId}', 3/4)" />
           <label for="file-photo-${playerId}" class="btn btn-dark btn-sm" style="margin:0;cursor:pointer">📸 Trocar foto</label>
         </div>
+        ${colorPicker}
       </div>
     </div>
     ${evals.length ? `<div style="overflow-x:auto"><table class="stats-tbl"><thead><tr><th>Avaliador</th>${ATTRS.map(a => `<th>${a.short}</th>`).join('')}<th>OVR</th></tr></thead><tbody>${tableRows}${avgRow}</tbody></table></div>` : '<div class="empty">Nenhuma avaliação.</div>'}
   `;
   openModal('detail-modal');
+}
+
+async function setCardColor(playerId, hexColor) {
+  const p = globalState.players.find(x => x.id === playerId);
+  if (!p) return;
+  
+  // Update state
+  p.card_color = hexColor || null;
+  
+  // Optimistic UI updates
+  renderCollection();
+  openDetailModal(playerId);
+  updateHeader();
+  
+  // Try saving to DB
+  try {
+    const updateObj = hexColor ? { card_color: hexColor } : { card_color: null };
+    const { error } = await sbClient.from('players').update(updateObj).eq('id', p.db_id);
+    if (error) {
+      console.error(error);
+      toast('Cor não salva. Você precisa adicionar a coluna "card_color" no Supabase.', 'err');
+    } else {
+      toast('Cor atualizada!', 'ok');
+    }
+  } catch (err) {
+    console.error(err);
+  }
 }
 
 // =========================================
