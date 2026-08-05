@@ -1684,6 +1684,10 @@ textarea.input-box {
   font-weight: 900 !important;
 }
 
+.fifa-card.card-custom .card-statval {
+  color: var(--card-main) !important;
+}
+
 
 .card-muitobom .card-deco {
   background-image: linear-gradient(45deg, rgba(160, 200, 230, .7) 25%, transparent 25%), linear-gradient(-45deg, rgba(160, 200, 230, .7) 25%, transparent 25%), linear-gradient(45deg, transparent 75%, rgba(160, 200, 230, .7) 75%), linear-gradient(-45deg, transparent 75%, rgba(160, 200, 230, .7) 75%);
