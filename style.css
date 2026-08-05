@@ -673,6 +673,7 @@ body {
   border: 1.5px solid var(--border);
   overflow: hidden;
   transition: var(--trans);
+  flex-shrink: 0;
 }
 
 .player-card-sel.selected .player-card-av {
