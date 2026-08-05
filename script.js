@@ -179,7 +179,7 @@ async function renderPlayerSelectGrid() {
     const taken = takenKeys.includes(p.id);
     return `
     <div class="player-card-sel ${regData.playerKey === p.id ? 'selected' : ''} ${taken ? 'taken' : ''}"
-         onclick="${taken ? '' : `selectPlayer('${p.id}')`}" id="pcard-${p.id}" title="${taken ? 'Já escolhido por outra pessoa' : ''}">
+         onclick="selectPlayer('${p.id}', ${taken})" id="pcard-${p.id}" title="${taken ? 'Já escolhido por outra pessoa' : ''}">
       <div class="player-card-check">✓</div>
       <div class="player-card-av">${p.photo ? `<img src="${esc(p.photo)}">` : initials(p.name)}</div>
       <div class="player-card-name">${esc(p.name)}</div>
@@ -189,7 +189,10 @@ async function renderPlayerSelectGrid() {
   }).join('');
 }
 
-function selectPlayer(id) {
+function selectPlayer(id, isTaken) {
+  if (isTaken) {
+    return toast('Este personagem já foi escolhido por outra pessoa.', 'err');
+  }
   regData.playerKey = id;
   document.querySelectorAll('.player-card-sel').forEach(el => el.classList.remove('selected'));
   const card = document.getElementById('pcard-' + id);
