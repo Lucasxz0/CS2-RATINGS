@@ -680,6 +680,12 @@ body {
   box-shadow: 0 0 10px var(--accent-glow);
 }
 
+.player-card-av img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
 .player-card-name {
   font-family: 'Oswald', sans-serif;
   font-size: 13px;
@@ -773,6 +779,13 @@ body {
   color: var(--accent);
   border: 2px solid var(--accent);
   flex-shrink: 0;
+  overflow: hidden;
+}
+
+.preview-av img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
 
 .preview-info {
