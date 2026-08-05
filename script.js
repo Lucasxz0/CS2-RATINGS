@@ -596,7 +596,7 @@ async function seedPlayers() {
     const rows = DEFAULT_PLAYERS.map(p => ({
       player_key: p.id, name: p.name, apelido: p.apelido, role: p.role, team: p.team
     }));
-    await sbClient.from('players').upsert(rows, { onConflict: 'player_key' });
+    await sbClient.from('players').upsert(rows, { onConflict: 'player_key', ignoreDuplicates: true });
   } catch (err) {
     console.error('Erro ao popular players', err);
   }
@@ -747,14 +747,17 @@ function openDetailModal(playerId) {
       </div>
       <div style="font-size:11px; color:var(--text-muted); margin-top:8px;">Escolha a cor da sua cartinha, igual no CS.</div>
     </div>`;
+  }
 
+  let rolePicker = '';
+  if (loggedInPlayerId) {
     rolePicker = `
     <div style="margin-top:20px; padding-top:16px; border-top:1px solid rgba(255,255,255,0.05)">
-      <div style="font-size:12px; color:var(--text-sec); margin-bottom:10px; font-weight:700; text-transform:uppercase; letter-spacing:1px;">Sua Função Tática</div>
+      <div style="font-size:12px; color:var(--text-sec); margin-bottom:10px; font-weight:700; text-transform:uppercase; letter-spacing:1px;">Função Tática (Role)</div>
       <select class="role-select" onchange="setPlayerRole('${playerId}', this.value)" style="background:var(--bg-elevated); color:white; border:1px solid rgba(255,255,255,0.1); padding:8px 12px; border-radius:6px; font-family:'Rajdhani',sans-serif; font-weight:600; width:100%; max-width:220px; cursor:pointer;">
         ${['IGL', 'Entry Fragger', 'AWPer', 'Suporte', 'Lurker', 'Anchor'].map(r => `<option value="${r}" ${player.role === r ? 'selected' : ''}>${r}</option>`).join('')}
       </select>
-      <div style="font-size:11px; color:var(--text-muted); margin-top:8px;">Escolha a sua função tática na equipe. O overall recalculará automaticamente.</div>
+      <div style="font-size:11px; color:var(--text-muted); margin-top:8px;">Altere a função de ${esc(player.name)}. O overall recalculará automaticamente.</div>
     </div>`;
   }
 
