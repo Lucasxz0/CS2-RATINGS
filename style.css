@@ -742,16 +742,20 @@ body {
 
 .player-card-taken-lbl {
   position: absolute;
-  bottom: 4px;
-  left: 0;
-  right: 0;
+  top: 32px; /* Center of the avatar (12px padding + 20px half-height) */
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: rgba(229, 57, 53, 0.95);
+  color: #fff;
+  padding: 2px 6px;
+  border-radius: 4px;
   text-align: center;
   font-family: 'Rajdhani', sans-serif;
   font-size: 9px;
   font-weight: 700;
   letter-spacing: 0.5px;
   text-transform: uppercase;
-  color: #E53935;
+  z-index: 2;
 }
 
 /* Selected player preview (step 3) */
