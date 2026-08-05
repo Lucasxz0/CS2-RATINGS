@@ -2691,3 +2691,127 @@ input[type="range"]::-webkit-slider-thumb:hover {
     display: none;
   }
 }
+
+/* ===================== ADMIN PANEL ===================== */
+.admin-nav-btn {
+  color: #E53935 !important;
+  border-color: rgba(229, 57, 53, 0.3) !important;
+}
+
+.admin-nav-btn:hover,
+.admin-nav-btn.active {
+  background: rgba(229, 57, 53, 0.1) !important;
+  color: #E53935 !important;
+  border-color: rgba(229, 57, 53, 0.5) !important;
+}
+
+.admin-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(270px, 1fr));
+  gap: 18px;
+  margin-top: 8px;
+}
+
+.admin-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.admin-danger {
+  border-color: rgba(229, 57, 53, 0.22);
+  background: rgba(229, 57, 53, 0.035);
+}
+
+.admin-card-full {
+  grid-column: 1 / -1;
+}
+
+.admin-card-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.admin-card-icon {
+  font-size: 22px;
+  line-height: 1;
+}
+
+.admin-card-title {
+  font-family: 'Oswald', sans-serif;
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+}
+
+.admin-card-desc {
+  font-size: 13px;
+  color: var(--text-sec);
+  flex: 1;
+  line-height: 1.6;
+  margin: 0;
+}
+
+.admin-stats {
+  font-size: 12px;
+  color: var(--text-muted);
+  font-family: 'Rajdhani', sans-serif;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+}
+
+.admin-count {
+  font-family: 'JetBrains Mono', monospace;
+  font-weight: 700;
+  color: var(--accent);
+  font-size: 16px;
+}
+
+.admin-confirm-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.88);
+  backdrop-filter: blur(14px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 500;
+  padding: 20px;
+}
+
+.admin-confirm-box {
+  background: var(--bg-card);
+  border: 1px solid rgba(229, 57, 53, 0.45);
+  border-radius: var(--radius);
+  padding: 30px;
+  max-width: 440px;
+  width: 100%;
+  box-shadow: 0 0 50px rgba(229, 57, 53, 0.15), 0 20px 60px rgba(0, 0, 0, 0.7);
+  animation: fadeUp 0.3s ease;
+}
+
+.admin-confirm-title {
+  font-family: 'Oswald', sans-serif;
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--red);
+  margin-bottom: 12px;
+}
+
+.admin-confirm-desc {
+  font-size: 14px;
+  color: var(--text-sec);
+  line-height: 1.6;
+  margin-bottom: 20px;
+}
+
+.admin-confirm-hint {
+  font-size: 13px;
+  color: var(--text-sec);
+  margin-bottom: 8px;
+}

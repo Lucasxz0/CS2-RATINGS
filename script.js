@@ -541,6 +541,9 @@ function updateHeader() {
   if (!p) return;
   document.getElementById('header-avatar').innerHTML = p.photo ? `<img src="${esc(p.photo)}">` : initials(p.name);
   document.getElementById('header-name').textContent = p.name;
+  // Mostra botão Admin apenas para lucas
+  const adminBtn = document.getElementById('nav-admin');
+  if (adminBtn) adminBtn.style.display = loggedInPlayerId === 'lucas' ? 'inline-flex' : 'none';
 }
 
 // =========================================
@@ -557,6 +560,7 @@ function nav(id) {
   if (id === 'clips') renderClips();
   if (id === 'avaliar') startEvalWizard();
   if (id === 'matamata') renderMMResults();
+  if (id === 'admin') renderAdminPanel();
 }
 
 function openModal(id) { document.getElementById(id).classList.add('open'); }
@@ -903,13 +907,195 @@ async function deleteClip(clipId) {
 }
 
 // Inicializar aplicativo SOMENTE após o DOM + CDN estarem prontos
+// =========================================
+// ADMIN PANEL
+// =========================================
+let adminResetTarget = null;
+
+function renderAdminPanel() {
+  const view = document.getElementById('admin-view');
+  if (loggedInPlayerId !== 'lucas') {
+    view.innerHTML = '<div class="empty">🔒 Acesso negado.</div>';
+    return;
+  }
+
+  const evCount = globalState.evaluations.length;
+  const mmCount = globalState.mataMataVotes.length;
+  const clipsCount = globalState.clips.length;
+
+  view.innerHTML = `
+    <h1 class="page-title">Painel <span>Admin</span></h1>
+    <p class="page-sub">Apenas você tem acesso a esta área. Ações aqui são irreversíveis.</p>
+
+    <div class="admin-cards">
+
+      <div class="admin-card">
+        <div class="admin-card-head">
+          <span class="admin-card-icon">📦</span>
+          <span class="admin-card-title">Backup</span>
+        </div>
+        <p class="admin-card-desc">Exporta todas as avaliações, votos e clips como arquivo JSON no seu computador.</p>
+        <div class="admin-stats">
+          <span>${evCount} avaliações</span> · <span>${mmCount} votos</span> · <span>${clipsCount} clips</span>
+        </div>
+        <button class="btn btn-dark" onclick="downloadBackup()">⬇️ Baixar Backup</button>
+      </div>
+
+      <div class="admin-card admin-danger">
+        <div class="admin-card-head">
+          <span class="admin-card-icon">🗑️</span>
+          <span class="admin-card-title">Zerar Avaliações</span>
+        </div>
+        <p class="admin-card-desc">Apaga todas as avaliações. As cartinhas voltarão a aparecer como <strong>bloqueadas</strong>.</p>
+        <div class="admin-stats"><span class="admin-count">${evCount}</span> avaliações no banco</div>
+        <button class="btn btn-red" onclick="adminConfirmReset('evaluations')">Apagar Avaliações</button>
+      </div>
+
+      <div class="admin-card admin-danger">
+        <div class="admin-card-head">
+          <span class="admin-card-icon">🗑️</span>
+          <span class="admin-card-title">Zerar Mata-Mata</span>
+        </div>
+        <p class="admin-card-desc">Apaga todos os votos do Mata-Mata. Todos poderão <strong>votar novamente</strong>.</p>
+        <div class="admin-stats"><span class="admin-count">${mmCount}</span> votos no banco</div>
+        <button class="btn btn-red" onclick="adminConfirmReset('matamata')">Apagar Votos</button>
+      </div>
+
+      <div class="admin-card admin-danger admin-card-full">
+        <div class="admin-card-head">
+          <span class="admin-card-icon">💥</span>
+          <span class="admin-card-title">Zerar Tudo</span>
+        </div>
+        <p class="admin-card-desc">Apaga <strong>todas as avaliações</strong> e <strong>todos os votos</strong> do Mata-Mata de uma vez. O site volta ao estado inicial.</p>
+        <button class="btn btn-red" style="align-self:flex-start" onclick="adminConfirmReset('all')">💥 Zerar Tudo</button>
+      </div>
+
+    </div>
+
+    <div class="admin-confirm-overlay" id="admin-confirm-overlay" style="display:none">
+      <div class="admin-confirm-box">
+        <div class="admin-confirm-title" id="admin-confirm-title"></div>
+        <div class="admin-confirm-desc" id="admin-confirm-desc"></div>
+        <div class="admin-confirm-hint">Digite <strong>CONFIRMAR</strong> para liberar o botão:</div>
+        <input class="input-box" type="text" id="admin-confirm-input" placeholder="CONFIRMAR"
+          oninput="checkAdminConfirm()" autocomplete="off" style="margin-bottom:0">
+        <div class="modal-actions" style="margin-top:16px">
+          <button class="btn btn-ghost" onclick="closeAdminConfirm()">Cancelar</button>
+          <button class="btn btn-red" id="admin-confirm-btn" onclick="executeAdminReset()" disabled>Apagar</button>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function adminConfirmReset(target) {
+  adminResetTarget = target;
+  const map = {
+    evaluations: {
+      title: '⚠️ Apagar todas as avaliações',
+      desc: 'Todas as avaliações de TODOS os jogadores serão apagadas permanentemente. As cartinhas voltarão a aparecer como bloqueadas. Esta ação NÃO pode ser desfeita.'
+    },
+    matamata: {
+      title: '⚠️ Apagar todos os votos',
+      desc: 'Todos os votos do Mata-Mata serão apagados permanentemente. Todos poderão votar novamente do zero. Esta ação NÃO pode ser desfeita.'
+    },
+    all: {
+      title: '💥 Zerar tudo',
+      desc: 'TODAS as avaliações E TODOS os votos do Mata-Mata serão apagados permanentemente. O site voltará ao estado inicial. Esta ação NÃO pode ser desfeita.'
+    },
+  };
+  const m = map[target];
+  document.getElementById('admin-confirm-title').textContent = m.title;
+  document.getElementById('admin-confirm-desc').textContent = m.desc;
+  document.getElementById('admin-confirm-input').value = '';
+  document.getElementById('admin-confirm-btn').disabled = true;
+  document.getElementById('admin-confirm-overlay').style.display = 'flex';
+  setTimeout(() => document.getElementById('admin-confirm-input').focus(), 100);
+}
+
+function checkAdminConfirm() {
+  const val = document.getElementById('admin-confirm-input').value;
+  document.getElementById('admin-confirm-btn').disabled = (val !== 'CONFIRMAR');
+}
+
+function closeAdminConfirm() {
+  document.getElementById('admin-confirm-overlay').style.display = 'none';
+  adminResetTarget = null;
+}
+
+async function executeAdminReset() {
+  const btn = document.getElementById('admin-confirm-btn');
+  btn.disabled = true;
+  btn.textContent = 'Apagando...';
+
+  try {
+    if (adminResetTarget === 'evaluations' || adminResetTarget === 'all') {
+      const { error } = await sbClient.from('evaluations').delete().gte('created_at', '2000-01-01T00:00:00Z');
+      if (error) throw error;
+    }
+    if (adminResetTarget === 'matamata' || adminResetTarget === 'all') {
+      const { error } = await sbClient.from('mata_mata_votes').delete().gte('created_at', '2000-01-01T00:00:00Z');
+      if (error) throw error;
+    }
+    closeAdminConfirm();
+    toast('Dados apagados com sucesso! ✅', 'ok');
+    await fetchAllData();
+    renderAdminPanel();
+  } catch (e) {
+    console.error(e);
+    // Erro de RLS: orienta o usuário a configurar a política no Supabase
+    const isRls = e.code === '42501' || (e.message && e.message.includes('policy'));
+    toast(isRls
+      ? 'Erro de permissão RLS. Veja o console para instruções.'
+      : 'Erro ao apagar: ' + (e.message || 'desconhecido'), 'err');
+    if (isRls) {
+      console.warn(
+        '%c[Admin] Para habilitar o reset, execute no SQL Editor do Supabase:\n\n' +
+        'CREATE POLICY "Admin delete evaluations" ON public.evaluations FOR DELETE USING (\n' +
+        '  EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND player_key = \'lucas\')\n' +
+        ');\n\n' +
+        'CREATE POLICY "Admin delete mata_mata_votes" ON public.mata_mata_votes FOR DELETE USING (\n' +
+        '  EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND player_key = \'lucas\')\n' +
+        ');',
+        'color: orange; font-size: 13px;'
+      );
+    }
+    btn.disabled = false;
+    btn.textContent = 'Apagar';
+  }
+}
+
+function downloadBackup() {
+  const backup = {
+    exportedAt: new Date().toISOString(),
+    players: globalState.players,
+    evaluations: globalState.evaluations,
+    mataMataVotes: globalState.mataMataVotes,
+    clips: globalState.clips,
+    comments: globalState.comments,
+  };
+  const blob = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'cs2-ratings-backup-' + new Date().toISOString().slice(0, 10) + '.json';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  toast('Backup baixado! 📦', 'ok');
+}
+
+// =========================================
+// INIT
+// =========================================
 document.addEventListener('DOMContentLoaded', () => {
   // Garante que o CDN do Supabase já carregou
   if (!window.supabase) {
     console.error('Supabase CDN não carregou!');
     return;
   }
-  supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+  sbClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
   initParticles();
   initPwListener();
