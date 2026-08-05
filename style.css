@@ -1686,6 +1686,7 @@ textarea.input-box {
 
 .fifa-card.card-custom .card-statval {
   color: var(--card-main) !important;
+  text-shadow: 0 0 10px var(--card-glow-strong), -1px -1px 0 rgba(0,0,0,0.8), 1px 1px 0 rgba(0,0,0,0.8) !important;
 }
 
 
