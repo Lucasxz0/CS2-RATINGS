@@ -529,7 +529,8 @@ async function fetchAllData() {
           apelido: dbP.apelido || def.apelido,
           role: dbP.role || def.role,
           team: dbP.team || def.team,
-          photo: dbP.photo
+          photo: dbP.photo,
+          card_color: dbP.card_color
         };
       });
     }
@@ -663,19 +664,13 @@ function buildCard(player, attrs, overall, tier, size = 'big', playstyles = []) 
   if (player.card_color) {
     tc += ' card-custom';
     const hex = player.card_color;
-    const r = parseInt(hex.slice(1, 3), 16);
-    const g = parseInt(hex.slice(3, 5), 16);
-    const b = parseInt(hex.slice(5, 7), 16);
+    const r = parseInt(hex.slice(1, 3), 16) || 48;
+    const g = parseInt(hex.slice(3, 5), 16) || 64;
+    const b = parseInt(hex.slice(5, 7), 16) || 80;
     const rgb = `${r}, ${g}, ${b}`;
     colorStyle = `style="
       --card-main: ${hex};
-      --card-glow: rgba(${rgb}, 0.5);
       --card-glow-strong: rgba(${rgb}, 0.8);
-      --card-bg-dark: rgba(${rgb}, 0.05);
-      --card-bg-mid: rgba(${rgb}, 0.2);
-      --card-deco: rgba(${rgb}, 0.85);
-      --card-frame: rgba(${rgb}, 0.25);
-      --card-panel: rgba(10,10,10, 0.95);
     "`;
   }
 
@@ -703,7 +698,10 @@ function renderCollection() {
   const sorted = globalState.players.map(p => {
     const avg = avgAttrs(globalState.evaluations.filter(e => e.playerId === p.id));
     return { p, avg, ov: avg ? calcFinalOverall(avg, p) : -1 };
-  }).sort((a, b) => b.ov - a.ov);
+  }).sort((a, b) => {
+    if (b.ov !== a.ov) return b.ov - a.ov;
+    return a.p.name.localeCompare(b.p.name);
+  });
 
   document.getElementById('collection-container').innerHTML = `<div class="col-grid">` + sorted.map(({ p, avg, ov }) => {
     const tier = avg ? getTier(ov) : 'treino';
