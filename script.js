@@ -544,6 +544,12 @@ function updateHeader() {
   // Mostra botão Admin apenas para lucas
   const adminBtn = document.getElementById('nav-admin');
   if (adminBtn) adminBtn.style.display = loggedInPlayerId === 'lucas' ? 'inline-flex' : 'none';
+  // Mostra/esconde botão admin no nav mobile
+  const mbnAdmin = document.getElementById('mbn-admin');
+  if (mbnAdmin) mbnAdmin.style.display = loggedInPlayerId === 'lucas' ? 'flex' : 'none';
+  // Exibe o menu mobile após login
+  const mobileNav = document.getElementById('mobile-bottom-nav');
+  if (mobileNav) mobileNav.style.display = 'flex';
 }
 
 // =========================================
@@ -552,15 +558,21 @@ function updateHeader() {
 function nav(id) {
   document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
   document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.mbn-btn').forEach(b => b.classList.remove('active'));
   document.getElementById('section-' + id).classList.add('active');
   const nb = document.getElementById('nav-' + id);
   if (nb) nb.classList.add('active');
+  const mbn = document.getElementById('mbn-' + id);
+  if (mbn) mbn.classList.add('active');
 
   if (id === 'colecao') renderCollection();
   if (id === 'clips') renderClips();
   if (id === 'avaliar') startEvalWizard();
   if (id === 'matamata') renderMMResults();
   if (id === 'admin') renderAdminPanel();
+  
+  // Scroll ao topo ao trocar de seção no mobile
+  window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
 function openModal(id) { document.getElementById(id).classList.add('open'); }
@@ -715,13 +727,35 @@ function renderEvalStep() {
   const ratings = evalState.ratings[player.id];
   const stepN = evalState.step;
   const dots = Array.from({ length: totalSteps }, (_, i) => `<div class="step-dot ${i < stepN - 1 ? 'done' : i === stepN - 1 ? 'current' : ''}"></div>`).join('');
-  const attrRows = ATTRS.map(a => `<div class="attr-row"><span class="attr-icon">${a.icon}</span><span class="attr-lbl">${a.full}</span><div class="attr-slider"><input type="range" id="sl-${a.key}" min="0" max="99" value="${ratings[a.key]}" oninput="onSlider('${player.id}','${a.key}')" /></div><div class="attr-val" id="av-${a.key}">${ratings[a.key]}</div></div>`).join('');
+  const attrRows = ATTRS.map(a => `
+    <div class="attr-row">
+      <span class="attr-icon">${a.icon}</span>
+      <span class="attr-lbl">${a.full}</span>
+      <div class="attr-slider-wrap">
+        <button class="attr-adj" type="button" onclick="adjustSlider('${player.id}','${a.key}',-1)" aria-label="Diminuir">−</button>
+        <div class="attr-slider">
+          <input type="range" id="sl-${a.key}" min="0" max="99" value="${ratings[a.key]}" oninput="onSlider('${player.id}','${a.key}')" />
+        </div>
+        <button class="attr-adj" type="button" onclick="adjustSlider('${player.id}','${a.key}',+1)" aria-label="Aumentar">+</button>
+      </div>
+      <div class="attr-val" id="av-${a.key}">${ratings[a.key]}</div>
+    </div>
+  `).join('');
   ev.innerHTML = `<div class="step-progress">${dots}<span class="step-label">PASSO ${stepN} DE ${totalSteps}</span></div><div class="wizard-header"><div class="wizard-avatar">${player.photo ? `<img src="${esc(player.photo)}">` : initials(player.name)}</div><div class="wizard-info"><div class="wizard-name">${esc(player.name)}</div><div class="wizard-sub">"${esc(player.apelido)}"</div></div><div class="live-ovr-wrap"><div class="live-ovr-lbl">Overall</div><div class="live-ovr-num" id="live-ovr">${calcOverall(ratings)}</div></div></div><div class="panel"><div class="panel-label">Avalie: ${esc(player.name)}</div>${attrRows}<div style="margin-top:20px;display:flex;gap:12px">${stepN > 1 ? `<button class="btn btn-ghost" onclick="evalState.step--;renderEvalStep()">← Voltar</button>` : ''}<button class="btn btn-gold" onclick="evalState.step++;renderEvalStep()">${stepN < totalSteps ? 'Próximo →' : 'Mata-Mata →'}</button></div></div>`;
   ATTRS.forEach(a => updateSliderBg(a.key, ratings[a.key]));
 }
 function onSlider(pId, k) {
   const v = parseInt(document.getElementById('sl-' + k).value);
   evalState.ratings[pId][k] = v; document.getElementById('av-' + k).textContent = v; updateSliderBg(k, v);
+  document.getElementById('live-ovr').textContent = calcOverall(evalState.ratings[pId]);
+}
+function adjustSlider(pId, k, delta) {
+  const slider = document.getElementById('sl-' + k);
+  const newVal = Math.max(0, Math.min(99, parseInt(slider.value) + delta));
+  slider.value = newVal;
+  evalState.ratings[pId][k] = newVal;
+  document.getElementById('av-' + k).textContent = newVal;
+  updateSliderBg(k, newVal);
   document.getElementById('live-ovr').textContent = calcOverall(evalState.ratings[pId]);
 }
 function updateSliderBg(k, v) { const pct = (v / 99) * 100; document.getElementById('sl-' + k).style.background = `linear-gradient(90deg, var(--accent) ${pct}%, var(--bg-elevated) ${pct}%)`; }

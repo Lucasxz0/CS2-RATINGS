@@ -2815,3 +2815,373 @@ input[type="range"]::-webkit-slider-thumb:hover {
   color: var(--text-sec);
   margin-bottom: 8px;
 }
+
+/* ===================== SLIDER +/- BUTTONS ===================== */
+.attr-slider-wrap {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.attr-adj {
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  background: var(--bg-elevated);
+  border: 1.5px solid var(--border);
+  color: var(--text);
+  font-size: 20px;
+  font-weight: 700;
+  cursor: pointer;
+  display: none; /* só aparece no mobile */
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: var(--trans);
+  line-height: 1;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+}
+
+.attr-adj:hover,
+.attr-adj:active {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: var(--accent-dim);
+}
+
+/* ===================== MOBILE BOTTOM NAV ===================== */
+.mobile-bottom-nav {
+  display: none; /* escondido no desktop */
+}
+
+/* ===================== MOBILE UX GLOBAL ===================== */
+@media (max-width: 768px) {
+
+  /* Safe area + viewport */
+  body {
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  /* ---- Header ---- */
+  header {
+    height: 56px !important;
+    flex-direction: row !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    padding: 0 16px !important;
+  }
+
+  .logo-sub {
+    display: none;
+  }
+
+  .logo {
+    font-size: 16px;
+    gap: 8px;
+  }
+
+  .logo-wrap span:first-child {
+    font-size: 16px;
+  }
+
+  .nav-center {
+    display: none !important; /* substituído pelo menu inferior */
+  }
+
+  .header-user {
+    position: static !important;
+    gap: 8px;
+  }
+
+  .btn-logout {
+    font-size: 11px;
+    padding: 4px 8px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    min-height: 32px;
+  }
+
+  /* ---- Main content ---- */
+  main {
+    padding: 20px 14px calc(90px + env(safe-area-inset-bottom)) !important;
+  }
+
+  /* ---- Bottom navigation bar ---- */
+  .mobile-bottom-nav {
+    display: flex;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    z-index: 150;
+    background: rgba(7, 9, 9, 0.97);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border-top: 1px solid var(--border);
+    padding: 6px 0 calc(6px + env(safe-area-inset-bottom));
+    gap: 0;
+  }
+
+  .mbn-btn {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 6px 4px;
+    min-height: 54px;
+    transition: var(--trans);
+    -webkit-tap-highlight-color: transparent;
+    position: relative;
+  }
+
+  .mbn-btn::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 50%;
+    transform: translateX(-50%) scaleX(0);
+    width: 32px;
+    height: 3px;
+    border-radius: 0 0 3px 3px;
+    background: var(--accent);
+    transition: transform 0.2s cubic-bezier(.34, 1.56, .64, 1);
+  }
+
+  .mbn-btn.active::before {
+    transform: translateX(-50%) scaleX(1);
+  }
+
+  .mbn-icon {
+    font-size: 21px;
+    line-height: 1;
+    transition: transform 0.2s cubic-bezier(.34, 1.56, .64, 1);
+  }
+
+  .mbn-btn.active .mbn-icon {
+    transform: scale(1.15) translateY(-1px);
+  }
+
+  .mbn-label {
+    font-family: 'Rajdhani', sans-serif;
+    font-size: 9px;
+    font-weight: 700;
+    color: var(--text-muted);
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    transition: color 0.2s;
+  }
+
+  .mbn-btn.active .mbn-label {
+    color: var(--accent);
+  }
+
+  .mbn-admin .mbn-label {
+    color: rgba(229, 57, 53, 0.7);
+  }
+
+  .mbn-admin.active .mbn-label {
+    color: #E53935;
+  }
+
+  /* FAB acima do nav inferior */
+  .fab {
+    bottom: calc(70px + env(safe-area-inset-bottom) + 16px) !important;
+    right: 16px !important;
+    width: 52px !important;
+    height: 52px !important;
+    font-size: 24px !important;
+  }
+
+  /* ---- Slider com botões +/- ---- */
+  .attr-adj {
+    display: flex;
+    min-height: 48px !important;
+    min-width: 48px !important;
+    width: 48px !important;
+    height: 48px !important;
+    border-radius: 10px;
+    font-size: 22px;
+  }
+
+  input[type="range"] {
+    min-height: 48px;
+    padding: 22px 0;
+  }
+
+  input[type="range"]::-webkit-slider-thumb {
+    width: 28px !important;
+    height: 28px !important;
+    border-width: 4px !important;
+  }
+
+  .attr-row {
+    flex-wrap: wrap;
+    gap: 6px;
+    padding: 10px 0;
+  }
+
+  .attr-lbl {
+    flex: 1;
+    width: auto !important;
+    font-size: 14px;
+  }
+
+  .attr-slider-wrap {
+    order: 4;
+    width: 100%;
+  }
+
+  .attr-slider {
+    flex: 1;
+  }
+
+  .attr-icon {
+    order: 1;
+  }
+
+  .attr-lbl {
+    order: 2;
+  }
+
+  .attr-val {
+    order: 3;
+    font-size: 20px;
+    width: auto;
+  }
+
+  /* ---- Wizard ---- */
+  .wizard-header {
+    flex-wrap: wrap;
+    padding: 16px;
+    gap: 12px;
+  }
+
+  .wizard-name {
+    font-size: 20px;
+  }
+
+  .live-ovr-num {
+    font-size: 32px;
+  }
+
+  /* ---- Modais full-screen no mobile ---- */
+  .overlay {
+    padding: 0 !important;
+    align-items: flex-end !important;
+  }
+
+  .modal-box {
+    border-radius: 20px 20px 0 0 !important;
+    max-width: 100% !important;
+    max-height: 92vh !important;
+    padding: 24px 20px calc(24px + env(safe-area-inset-bottom)) !important;
+    transform: translateY(30px) !important;
+  }
+
+  .overlay.open .modal-box {
+    transform: translateY(0) !important;
+  }
+
+  /* ---- Botões com touch target mínimo ---- */
+  .btn,
+  .btn-login-submit,
+  .nav-btn,
+  .btn-back,
+  .btn-logout {
+    min-height: 48px !important;
+  }
+
+  .btn-sm {
+    min-height: 40px !important;
+  }
+
+  /* ---- Inputs maiores ---- */
+  .input-field,
+  .input-box {
+    font-size: 16px !important; /* evita zoom no iOS */
+    padding: 14px 16px 14px 44px !important;
+    min-height: 52px !important;
+  }
+
+  textarea.input-box {
+    min-height: 80px !important;
+    padding: 14px 16px !important;
+  }
+
+  /* ---- Coleção de cartinhas ---- */
+  .col-grid {
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    gap: 14px;
+  }
+
+  .col-item .fifa-card {
+    width: 140px;
+    height: 208px;
+  }
+
+  /* ---- Mata-mata options ---- */
+  .mm-option label {
+    min-height: 48px !important;
+    padding: 10px 16px !important;
+    font-size: 14px !important;
+  }
+
+  /* ---- Clips ---- */
+  .clip-reactions {
+    gap: 8px;
+  }
+
+  .react-btn {
+    min-height: 44px;
+    padding: 8px 14px;
+    font-size: 13px;
+  }
+
+  .comment-input-row input {
+    font-size: 16px; /* evita zoom no iOS */
+    min-height: 44px;
+    padding: 10px 14px;
+  }
+
+  .comment-input-row button {
+    min-height: 44px;
+    min-width: 60px;
+    font-size: 13px;
+  }
+
+  /* ---- Page titles ---- */
+  .page-title {
+    font-size: 22px;
+  }
+
+  /* ---- Admin panel ---- */
+  .admin-cards {
+    grid-template-columns: 1fr;
+  }
+
+  .admin-card-full {
+    grid-column: 1 !important;
+  }
+
+  /* ---- Register step grid ---- */
+  .player-select-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+  }
+
+  /* ---- Auth container ---- */
+  .auth-container {
+    border-radius: 16px;
+  }
+
+  .auth-form {
+    padding: 20px 18px;
+  }
+}
