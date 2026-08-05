@@ -583,14 +583,31 @@ document.querySelectorAll('.overlay').forEach(el => el.addEventListener('click',
 // CARD BUILDER & COLLECTION
 // =========================================
 function buildCard(player, attrs, overall, tier, size = 'big') {
-  const tc = 'card-' + tier;
+  let tc = 'card-' + tier;
   const photoBg = player.photo ? `style="background-image:url('${esc(player.photo)}')"` : '';
   const placeholder = player.photo ? '' : `<div class="card-photo-placeholder"><div class="card-photo-initials">${initials(player.name)}</div><svg class="card-photo-crosshair" width="160" height="160" viewBox="0 0 160 160" fill="none"><circle cx="80" cy="80" r="60" stroke="white" stroke-width="1.5"/><circle cx="80" cy="80" r="8" stroke="white" stroke-width="1.5"/><line x1="80" y1="20" x2="80" y2="55" stroke="white" stroke-width="1.5"/><line x1="80" y1="105" x2="80" y2="140" stroke="white" stroke-width="1.5"/><line x1="20" y1="80" x2="55" y2="80" stroke="white" stroke-width="1.5"/><line x1="105" y1="80" x2="140" y2="80" stroke="white" stroke-width="1.5"/></svg></div>`;
   const left = CARD_ATTRS_LEFT.map(k => { const a = ATTRS.find(x => x.key === k); return `<div class="card-stat"><span class="card-stat-icon">${a.icon}</span><span class="card-statval">${attrs ? attrs[k] ?? '—' : '—'}</span><span class="card-statlbl">${a.short}</span></div>`; }).join('');
   const right = CARD_ATTRS_RIGHT.map(k => { const a = ATTRS.find(x => x.key === k); return `<div class="card-stat"><span class="card-stat-icon">${a.icon}</span><span class="card-statval">${attrs ? attrs[k] ?? '—' : '—'}</span><span class="card-statlbl">${a.short}</span></div>`; }).join('');
 
-  // Aplica cor personalizada se existir (override CSS custom properties)
-  const colorStyle = player.card_color ? `style="--accent:${player.card_color}; --accent-glow:${player.card_color}66"` : '';
+  let colorStyle = '';
+  if (player.card_color) {
+    tc += ' card-custom';
+    const hex = player.card_color;
+    const r = parseInt(hex.slice(1, 3), 16);
+    const g = parseInt(hex.slice(3, 5), 16);
+    const b = parseInt(hex.slice(5, 7), 16);
+    const rgb = `${r}, ${g}, ${b}`;
+    colorStyle = `style="
+      --card-main: ${hex};
+      --card-glow: rgba(${rgb}, 0.5);
+      --card-glow-strong: rgba(${rgb}, 0.8);
+      --card-bg-dark: rgba(${rgb}, 0.05);
+      --card-bg-mid: rgba(${rgb}, 0.2);
+      --card-deco: rgba(${rgb}, 0.85);
+      --card-frame: rgba(${rgb}, 0.25);
+      --card-panel: rgba(10,10,10, 0.95);
+    "`;
+  }
 
   return `<div class="fifa-card ${tc}" ${colorStyle}><div class="card-bg"></div>
     <div class="card-photo" ${photoBg}>${placeholder}</div>

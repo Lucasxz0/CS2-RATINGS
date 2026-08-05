@@ -1648,6 +1648,58 @@ textarea.input-box {
   background: linear-gradient(145deg, #0C1218, #182030, #0C1218);
 }
 
+/* ===================== CUSTOM COLOR CARD ===================== */
+.fifa-card.card-custom {
+  box-shadow: 0 0 0 2px var(--card-main), 0 0 25px var(--card-glow), 0 20px 60px rgba(0, 0, 0, 0.8);
+}
+
+.fifa-card.card-custom .card-bg {
+  background: linear-gradient(145deg, var(--card-bg-dark), var(--card-bg-mid), var(--card-bg-dark));
+}
+
+.fifa-card.card-custom .card-deco {
+  background-image: linear-gradient(45deg, var(--card-deco) 25%, transparent 25%), linear-gradient(-45deg, var(--card-deco) 25%, transparent 25%), linear-gradient(45deg, transparent 75%, var(--card-deco) 75%), linear-gradient(-45deg, transparent 75%, var(--card-deco) 75%);
+}
+
+.fifa-card.card-custom .card-ovr {
+  color: var(--card-main);
+  text-shadow: 0 0 16px var(--card-glow-strong), -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000;
+}
+
+.fifa-card.card-custom .card-pos {
+  color: var(--card-main);
+  opacity: 0.9;
+}
+
+.fifa-card.card-custom .card-nick {
+  color: var(--card-main);
+  text-shadow: 0 0 20px var(--card-glow-strong), -1px -1px 0 rgba(0, 0, 0, 0.9), 1px 1px 0 rgba(0, 0, 0, 0.9);
+}
+
+.fifa-card.card-custom .card-statval {
+  color: var(--card-main);
+}
+
+.fifa-card.card-custom .card-frame {
+  box-shadow: inset 0 0 0 2px var(--card-main), inset 0 0 24px var(--card-frame);
+}
+
+.fifa-card.card-custom .card-ovr-badge {
+  background: linear-gradient(90deg, rgba(0,0,0,0.8), var(--card-main), rgba(0,0,0,0.8));
+  color: #fff;
+  text-shadow: 0 1px 4px rgba(0,0,0,0.9);
+  font-weight: 900;
+}
+
+.fifa-card.card-custom .card-divider-v {
+  background: var(--card-glow);
+}
+
+.fifa-card.card-custom .card-stats-panel {
+  background: var(--card-panel);
+}
+
+
 .card-muitobom .card-deco {
   background-image: linear-gradient(45deg, rgba(160, 200, 230, .7) 25%, transparent 25%), linear-gradient(-45deg, rgba(160, 200, 230, .7) 25%, transparent 25%), linear-gradient(45deg, transparent 75%, rgba(160, 200, 230, .7) 75%), linear-gradient(-45deg, transparent 75%, rgba(160, 200, 230, .7) 75%);
 }
