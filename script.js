@@ -171,7 +171,7 @@ async function renderPlayerSelectGrid() {
 
   let takenKeys = [];
   try {
-    const { data } = await supabase.from('profiles').select('player_key');
+    const { data } = await sbClient.from('profiles').select('player_key');
     takenKeys = (data || []).map(r => r.player_key);
   } catch (err) { console.error('Erro ao checar personagens ocupados', err); }
 
@@ -293,7 +293,7 @@ async function handleLogin() {
   btn.disabled = true;
   btn.innerHTML = '<span class="btn-text">Entrando</span><span class="btn-arrow">⏳</span>';
 
-  const { data, error } = await supabase.auth.signInWithPassword({ email, password: pass });
+  const { data, error } = await sbClient.auth.signInWithPassword({ email, password: pass });
 
   btn.disabled = false;
   btn.innerHTML = '<span class="btn-text">Entrar</span><span class="btn-arrow">→</span>';
@@ -305,7 +305,7 @@ async function handleLogin() {
 async function handleForgotPassword() {
   const email = document.getElementById('login-email').value.trim();
   if (!email) { shakeInput('login-email'); return toast('Digite seu e-mail para recuperar a senha.', 'err'); }
-  const { error } = await supabase.auth.resetPasswordForEmail(email, {
+  const { error } = await sbClient.auth.resetPasswordForEmail(email, {
     redirectTo: window.location.origin + window.location.pathname
   });
   if (error) { toast('Erro: ' + translateAuthError(error.message), 'err'); return; }
@@ -326,7 +326,7 @@ async function handleRegister() {
   btn.innerHTML = '<span class="btn-text">Criando conta</span><span class="btn-arrow">⏳</span>';
 
   // Checa se o personagem já foi escolhido por outra conta antes de criar o usuário
-  const { data: taken } = await supabase.from('profiles').select('player_key').eq('player_key', regData.playerKey).maybeSingle();
+  const { data: taken } = await sbClient.from('profiles').select('player_key').eq('player_key', regData.playerKey).maybeSingle();
   if (taken) {
     btn.disabled = false;
     btn.innerHTML = '<span class="btn-text">Criar Conta</span><span class="btn-arrow">🚀</span>';
@@ -334,7 +334,7 @@ async function handleRegister() {
     return toast('Esse personagem já foi escolhido por outra pessoa. Selecione outro!', 'err');
   }
 
-  const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
+  const { data: signUpData, error: signUpError } = await sbClient.auth.signUp({
     email, password: pass,
     options: { data: { player_key: regData.playerKey, full_name: regData.fullName } }
   });
@@ -347,7 +347,7 @@ async function handleRegister() {
   }
 
   // Faz login imediatamente após criar a conta (sem precisar confirmar e-mail)
-  const { data: loginData, error: loginError } = await supabase.auth.signInWithPassword({ email, password: pass });
+  const { data: loginData, error: loginError } = await sbClient.auth.signInWithPassword({ email, password: pass });
 
   btn.disabled = false;
   btn.innerHTML = '<span class="btn-text">Criar Conta</span><span class="btn-arrow">🚀</span>';
@@ -362,12 +362,12 @@ async function handleRegister() {
   // Vincula a conta ao personagem escolhido na tabela profiles.
   // O UNIQUE em profiles.player_key protege contra corrida (duas pessoas
   // escolhendo o mesmo personagem ao mesmo tempo).
-  const { error: profileError } = await supabase.from('profiles').insert({
+  const { error: profileError } = await sbClient.from('profiles').insert({
     id: loginData.user.id, player_key: regData.playerKey, full_name: regData.fullName
   });
   if (profileError) {
     toast('Este personagem acabou de ser escolhido por outra pessoa. Fale com um admin.', 'err');
-    await supabase.auth.signOut();
+    await sbClient.auth.signOut();
     return;
   }
 
@@ -376,7 +376,7 @@ async function handleRegister() {
 
 
 async function logout() {
-  await supabase.auth.signOut();
+  await sbClient.auth.signOut();
   currentUser = null; loggedInPlayerId = null;
   document.getElementById('login-screen').style.display = 'flex';
   document.getElementById('main-header').style.display = 'none';
@@ -385,10 +385,10 @@ async function logout() {
 
 // Inicialização e Listener de Auth
 async function init() {
-  const { data: { session } } = await supabase.auth.getSession();
+  const { data: { session } } = await sbClient.auth.getSession();
   await handleAuthChange(session);
 
-  supabase.auth.onAuthStateChange(async (_event, session) => {
+  sbClient.auth.onAuthStateChange(async (_event, session) => {
     await handleAuthChange(session);
   });
 }
@@ -433,12 +433,12 @@ async function fetchAllData() {
 
   try {
     const [playersRes, evalsRes, mmRes, clipsRes, commRes, profilesRes] = await Promise.all([
-      supabase.from('players').select('*'),
-      supabase.from('evaluations').select('*'),
-      supabase.from('mata_mata_votes').select('*'),
-      supabase.from('clips').select('*'),
-      supabase.from('comments').select('*'),
-      supabase.from('profiles').select('*')
+      sbClient.from('players').select('*'),
+      sbClient.from('evaluations').select('*'),
+      sbClient.from('mata_mata_votes').select('*'),
+      sbClient.from('clips').select('*'),
+      sbClient.from('comments').select('*'),
+      sbClient.from('profiles').select('*')
     ]);
 
     // Monta o mapa auth_id -> player_key ANTES de processar as outras tabelas,
@@ -530,7 +530,7 @@ async function seedPlayers() {
     const rows = DEFAULT_PLAYERS.map(p => ({
       player_key: p.id, name: p.name, apelido: p.apelido, role: p.role, team: p.team
     }));
-    await supabase.from('players').upsert(rows, { onConflict: 'player_key' });
+    await sbClient.from('players').upsert(rows, { onConflict: 'player_key' });
   } catch (err) {
     console.error('Erro ao popular players', err);
   }
@@ -684,9 +684,9 @@ async function confirmCrop() {
       toast('Salvando foto no banco...', 'inf');
       p.photo = b64;
       if (p.db_id) {
-        await supabase.from('players').update({ photo: b64 }).eq('id', p.db_id);
+        await sbClient.from('players').update({ photo: b64 }).eq('id', p.db_id);
       } else {
-        await supabase.from('players').insert({ player_key: p.id, name: p.name, apelido: p.apelido, role: p.role, team: p.team, photo: b64 });
+        await sbClient.from('players').insert({ player_key: p.id, name: p.name, apelido: p.apelido, role: p.role, team: p.team, photo: b64 });
         await fetchAllData(); // reload
       }
       toast('Foto salva!', 'ok');
@@ -747,12 +747,12 @@ async function submitEvaluation() {
     if (evalInserts.length > 0) {
       // Supabase nao tem UPSERT massivo facil se a constraint (evaluator_id, player_id) for acionada
       // Vamos tentar dar upsert/delete manual ou apenas insert
-      await supabase.from('evaluations').delete().eq('evaluator_id', currentUser.id); // deleta antigos pra garantir
-      await supabase.from('evaluations').insert(evalInserts);
+      await sbClient.from('evaluations').delete().eq('evaluator_id', currentUser.id); // deleta antigos pra garantir
+      await sbClient.from('evaluations').insert(evalInserts);
     }
 
-    await supabase.from('mata_mata_votes').delete().eq('evaluator_id', currentUser.id);
-    await supabase.from('mata_mata_votes').insert({ evaluator_id: currentUser.id, votes: evalState.mataMata });
+    await sbClient.from('mata_mata_votes').delete().eq('evaluator_id', currentUser.id);
+    await sbClient.from('mata_mata_votes').insert({ evaluator_id: currentUser.id, votes: evalState.mataMata });
 
     await fetchAllData();
     toast('Avaliação salva! 🏆', 'ok');
@@ -867,7 +867,7 @@ async function submitClip() {
   else if (url) { mediaType = 'url'; mediaUrl = url; }
   else return toast('Adicione uma URL ou Imagem.', 'err');
 
-  await supabase.from('clips').insert({
+  await sbClient.from('clips').insert({
     player_id: currentUser.id,
     title, description: desc, media_type: mediaType, media_url: mediaUrl
   });
@@ -889,20 +889,20 @@ async function toggleReact(clipId, type) {
   if (idx > -1) arr.splice(idx, 1); else arr.push(currentUser.id);
   reactions[type] = arr;
 
-  await supabase.from('clips').update({ reactions }).eq('id', clipId);
+  await sbClient.from('clips').update({ reactions }).eq('id', clipId);
   await fetchAllData(); renderClips();
 }
 
 async function addComment(clipId) {
   const inp = document.getElementById('cin-' + clipId);
   const txt = inp.value.trim(); if (!txt) return;
-  await supabase.from('comments').insert({ clip_id: clipId, player_id: currentUser.id, text: txt });
+  await sbClient.from('comments').insert({ clip_id: clipId, player_id: currentUser.id, text: txt });
   await fetchAllData(); renderClips();
 }
 
 async function deleteClip(clipId) {
   if (!confirm('Deletar post?')) return;
-  await supabase.from('clips').delete().eq('id', clipId);
+  await sbClient.from('clips').delete().eq('id', clipId);
   await fetchAllData(); renderClips();
 }
 
