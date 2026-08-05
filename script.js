@@ -25,29 +25,46 @@ const ATTRS = [
   { key: 'tilt', icon: '😤', short: 'TILT', full: 'CONTROLE DO TILT', desc: 'Capacidade de manter a calma' },
   { key: 'impacto', icon: '⭐', short: 'IMPACTO', full: 'IMPACTO NO TIME', desc: 'Influência direta' },
 ];
-const WEIGHTS = { aim: 0.22, sense: 0.18, reflexo: 0.15, clutch: 0.15, teamplay: 0.10, comms: 0.08, tilt: 0.06, impacto: 0.06 };
+const ROLE_WEIGHTS = {
+  IGL: { sense: 0.24, impacto: 0.20, comms: 0.15, teamplay: 0.15, aim: 0.14, clutch: 0.08, reflexo: 0.02, tilt: 0.02 },
+  AWPer: { aim: 0.28, reflexo: 0.18, clutch: 0.18, impacto: 0.16, sense: 0.12, teamplay: 0.04, comms: 0.02, tilt: 0.02 },
+  Entry: { aim: 0.30, reflexo: 0.20, impacto: 0.18, clutch: 0.12, sense: 0.10, teamplay: 0.05, comms: 0.03, tilt: 0.02 },
+  Lurker: { sense: 0.26, aim: 0.22, clutch: 0.18, impacto: 0.16, reflexo: 0.08, teamplay: 0.05, comms: 0.03, tilt: 0.02 },
+  Support: { teamplay: 0.24, comms: 0.22, sense: 0.20, impacto: 0.14, aim: 0.10, clutch: 0.05, reflexo: 0.03, tilt: 0.02 },
+  Rifler: { aim: 0.25, reflexo: 0.15, impacto: 0.15, sense: 0.15, clutch: 0.12, teamplay: 0.10, comms: 0.05, tilt: 0.03 }
+};
 const CARD_ATTRS_LEFT = ['aim', 'reflexo', 'sense'];
 const CARD_ATTRS_RIGHT = ['teamplay', 'clutch', 'comms'];
 const MM_QUESTIONS = [
-  { id: 'melhorMira', emoji: '🎯', q: 'Quem possui a melhor mira?' },
-  { id: 'melhorSense', emoji: '🧠', q: 'Quem possui o melhor Game Sense?' },
-  { id: 'reiClutch', emoji: '💣', q: 'Quem é o Rei do Clutch?' },
-  { id: 'melhoresCalls', emoji: '🎙️', q: 'Quem faz as melhores calls?' },
-  { id: 'melhorIGL', emoji: '👑', q: 'Quem é o melhor IGL?' },
-  { id: 'melhorAWP', emoji: '🔭', q: 'Quem é o melhor AWPer?' },
-  { id: 'melhorEntry', emoji: '🚪', q: 'Quem é o melhor Entry?' },
-  { id: 'melhorSupport', emoji: '🛡️', q: 'Quem é o melhor Support?' },
-  { id: 'maisCarrega', emoji: '💪', q: 'Quem mais carrega a equipe?' },
-  { id: 'maisEvoluiu', emoji: '📈', q: 'Quem mais evoluiu?' },
-  { id: 'maisTilta', emoji: '😡', q: 'Quem mais tilta? 😂' },
-  { id: 'mvp', emoji: '🏆', q: 'Quem é o MVP da line?' },
-  { id: 'maisCompleto', emoji: '🔫', q: 'Quem é o atirador mais completo?' },
-  { id: 'reiEco', emoji: '💰', q: 'Quem é o rei do round eco?' },
-  { id: 'naoSabeAndar', emoji: '🐴', q: 'Quem não sabe andar no shiu?' },
-  { id: 'ninja', emoji: '🥷', q: 'Quem mais infiltra nas linhas inimigas?' },
-  { id: 'acougeiro', emoji: '🔪', q: 'Quem é o Açougueiro do time?' },
-  { id: 'legendaDefuse', emoji: '💾', q: 'Quem é a lenda defuse kit?' },
-  { id: 'craqueDoPlant', emoji: '💥', q: 'Quem é o craque do plant?' },
+  { id: 'mvp', emoji: '🏆', q: 'Quem é o MVP da line?', bonus: 2.0 },
+  { id: 'carrega', emoji: '🚛', q: 'Quem carrega o time?', bonus: 2.0 },
+  { id: 'melhorMira', emoji: '🎯', q: 'Quem possui a melhor mira?', bonus: 2.0 },
+  { id: 'melhorSense', emoji: '🧠', q: 'Quem possui o melhor Game Sense?', bonus: 2.0 },
+  { id: 'reiClutch', emoji: '💣', q: 'Quem é o Rei do Clutch?', bonus: 1.5 },
+  { id: 'melhorComms', emoji: '🎙️', q: 'Quem tem a melhor comunicação?', bonus: 1.5 },
+  { id: 'melhorIGL', emoji: '👑', q: 'Quem é o melhor IGL?', bonus: 1.5 },
+  { id: 'consistente', emoji: '📈', q: 'Quem é o jogador mais consistente?', bonus: 1.5 },
+  { id: 'melhorAWP', emoji: '🔭', q: 'Quem é o melhor AWPer?', bonus: 1.0 },
+  { id: 'melhorEntry', emoji: '⚔️', q: 'Quem é o melhor Entry?', bonus: 1.0 },
+  { id: 'melhorLurker', emoji: '🥷', q: 'Quem é o melhor Lurker?', bonus: 1.0 },
+  { id: 'melhorSupport', emoji: '🛡️', q: 'Quem é o melhor Support?', bonus: 1.0 },
+  { id: 'engracado', emoji: '😂', q: 'Quem é o mais engraçado?', bonus: 0.5 },
+  { id: 'frio', emoji: '😎', q: 'Quem é o mais frio?', bonus: 0.5 },
+  { id: 'mentalidade', emoji: '🔥', q: 'Quem tem a melhor mentalidade?', bonus: 0.5 },
+  { id: 'parceiro', emoji: '🤝', q: 'Quem é o melhor parceiro?', bonus: 0.5 },
+  { id: 'trolla', emoji: '🤡', q: 'Quem trolla a partida?', bonus: -2.0 },
+  { id: 'ragequit', emoji: '🔌', q: 'Quem dá rage quit?', bonus: -2.0 },
+  { id: 'naoComunica', emoji: '🔇', q: 'Quem não comunica?', bonus: -2.0 },
+  { id: 'semUtilitaria', emoji: '🚫', q: 'Quem não sabe usar utilitária?', bonus: -1.5 },
+  { id: 'morrePrimeiro', emoji: '💀', q: 'Quem morre primeiro sem trocar?', bonus: -1.5 },
+  { id: 'naoJogaEquipe', emoji: '🐺', q: 'Quem nunca joga em equipe?', bonus: -1.5 },
+  { id: 'fazBarulho', emoji: '🐘', q: 'Quem faz muito barulho (passos)?', bonus: -1.0 },
+  { id: 'compraErrado', emoji: '🛒', q: 'Quem compra errado?', bonus: -1.0 },
+  { id: 'tiltaFacil', emoji: '😡', q: 'Quem tilta fácil?', bonus: -1.0 },
+  { id: 'perdeClutchAnsiedade', emoji: '😰', q: 'Quem perde clutch por ansiedade?', bonus: -1.0 },
+  { id: 'atrasaEntrar', emoji: '🐌', q: 'Quem atrasa para entrar?', bonus: -0.5 },
+  { id: 'reclamaMuito', emoji: '🗣️', q: 'Quem reclama muito?', bonus: -0.5 },
+  { id: 'rushaDemais', emoji: '🏃', q: 'Quem rusha demais?', bonus: -0.5 }
 ];
 
 let globalState = { players: [], evaluations: [], mataMataVotes: [], clips: [], comments: [] };
@@ -63,7 +80,45 @@ let profilesMap = {};
 // UTILS & MATH
 // =========================================
 function esc(s) { return s ? String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;') : ''; }
-function calcOverall(attrs) { let t = 0; for (const [k, w] of Object.entries(WEIGHTS)) t += (attrs[k] || 0) * w; return Math.round(t); }
+function calcBaseOverall(attrs, role) {
+  if (!role) role = 'Rifler';
+  const weights = ROLE_WEIGHTS[role] || ROLE_WEIGHTS['Rifler'];
+  let t = 0;
+  for (const [k, w] of Object.entries(weights)) t += (attrs[k] || 0) * w;
+  return Math.round(t);
+}
+
+function getPlayerPlaystyles(playerId) {
+  const votesCount = {};
+  globalState.mataMataVotes.forEach(vote => {
+    if (!votesCount[vote.category_id]) votesCount[vote.category_id] = {};
+    if (!votesCount[vote.category_id][vote.player_id]) votesCount[vote.category_id][vote.player_id] = 0;
+    votesCount[vote.category_id][vote.player_id]++;
+  });
+  const wonStyles = [];
+  let totalBonus = 0;
+  MM_QUESTIONS.forEach(q => {
+    if (votesCount[q.id]) {
+      const counts = votesCount[q.id];
+      let maxVotes = 0;
+      let winners = [];
+      for (const pId in counts) {
+        if (counts[pId] > maxVotes) { maxVotes = counts[pId]; winners = [pId]; }
+        else if (counts[pId] === maxVotes) { winners.push(pId); }
+      }
+      if (winners.includes(playerId)) { wonStyles.push(q); totalBonus += q.bonus; }
+    }
+  });
+  if (totalBonus > 5) totalBonus = 5;
+  if (totalBonus < -5) totalBonus = -5;
+  return { styles: wonStyles, bonus: totalBonus };
+}
+
+function calcFinalOverall(attrs, player) {
+  const base = calcBaseOverall(attrs, player.role);
+  const { bonus } = getPlayerPlaystyles(player.id);
+  return Math.round(base + bonus);
+}
 function getTier(ov) { return ov >= 90 ? 'fenomeno' : ov >= 80 ? 'excelente' : ov >= 70 ? 'muitobom' : ov >= 60 ? 'bom' : 'treino'; }
 function getTierLabel(t) { return { fenomeno: 'Fenômeno', excelente: 'Excelente', muitobom: 'Muito Bom', bom: 'Bom', treino: 'Treino' }[t]; }
 function avgAttrs(evals) {
@@ -585,7 +640,7 @@ document.querySelectorAll('.overlay').forEach(el => el.addEventListener('click',
 // =========================================
 // CARD BUILDER & COLLECTION
 // =========================================
-function buildCard(player, attrs, overall, tier, size = 'big') {
+function buildCard(player, attrs, overall, tier, size = 'big', playstyles = []) {
   let tc = 'card-' + tier;
   const photoBg = player.photo ? `style="background-image:url('${esc(player.photo)}')"` : '';
   const placeholder = player.photo ? '' : `<div class="card-photo-placeholder"><div class="card-photo-initials">${initials(player.name)}</div><svg class="card-photo-crosshair" width="160" height="160" viewBox="0 0 160 160" fill="none"><circle cx="80" cy="80" r="60" stroke="white" stroke-width="1.5"/><circle cx="80" cy="80" r="8" stroke="white" stroke-width="1.5"/><line x1="80" y1="20" x2="80" y2="55" stroke="white" stroke-width="1.5"/><line x1="80" y1="105" x2="80" y2="140" stroke="white" stroke-width="1.5"/><line x1="20" y1="80" x2="55" y2="80" stroke="white" stroke-width="1.5"/><line x1="105" y1="80" x2="140" y2="80" stroke="white" stroke-width="1.5"/></svg></div>`;
@@ -612,12 +667,21 @@ function buildCard(player, attrs, overall, tier, size = 'big') {
     "`;
   }
 
+  let psHtml = '';
+  if (playstyles && playstyles.length > 0) {
+    psHtml = `<div class="card-playstyles">` + playstyles.map(ps => {
+      const isNeg = ps.bonus < 0;
+      return `<div class="ps-badge ${isNeg ? 'neg' : 'pos'}" title="${esc(ps.q)}">${ps.emoji}</div>`;
+    }).join('') + `</div>`;
+  }
+
   return `<div class="fifa-card ${tc}" ${colorStyle}><div class="card-bg"></div>
     <div class="card-photo" ${photoBg}>${placeholder}</div>
     <div class="card-deco top"></div><div class="card-deco bot"></div>
     <div class="card-top-left"><div class="card-ovr">${overall !== null ? overall : '??'}</div><div class="card-pos">${esc(player.role)}</div><div class="card-team-sm">${esc(player.team)}</div></div>
     <div class="card-edition" style="color:inherit"><span class="card-crown">👑</span><span>LINE</span><span class="card-edition-sub">OFICIAL</span></div>
     <div class="card-frame"></div>
+    ${psHtml}
     <div class="card-name-area"><div class="card-nick">${esc(player.name)}</div><div class="card-apelido">"${esc(player.apelido)}"</div></div>
     <div class="card-stats-panel"><div class="card-stats-grid"><div class="card-stats-col">${left}</div><div class="card-divider-v"></div><div class="card-stats-col right">${right}</div></div><div class="card-ovr-badge">OVERALL ${overall !== null ? overall : '??'}</div></div>
   </div>`;
@@ -626,12 +690,13 @@ function buildCard(player, attrs, overall, tier, size = 'big') {
 function renderCollection() {
   const sorted = globalState.players.map(p => {
     const avg = avgAttrs(globalState.evaluations.filter(e => e.playerId === p.id));
-    return { p, avg, ov: avg ? calcOverall(avg) : -1 };
+    return { p, avg, ov: avg ? calcFinalOverall(avg, p) : -1 };
   }).sort((a, b) => b.ov - a.ov);
 
   document.getElementById('collection-container').innerHTML = `<div class="col-grid">` + sorted.map(({ p, avg, ov }) => {
     const tier = avg ? getTier(ov) : 'treino';
-    let card = buildCard(p, avg, avg ? ov : null, tier, 'small');
+    const pstyles = getPlayerPlaystyles(p.id).styles;
+    let card = buildCard(p, avg, avg ? ov : null, tier, 'small', pstyles);
     if (!avg) card = card.replace('</div>', '<div class="card-locked-layer"><svg width="22" height="22" viewBox="0 0 24 24" stroke="white" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg><span>Aguardando avaliações</span></div></div>');
     return `<div class="col-item" onclick="openDetailModal('${p.id}')">${card}</div>`;
   }).join('') + `</div>`;
@@ -642,10 +707,10 @@ function openDetailModal(playerId) {
   if (!player) return;
   const evals = globalState.evaluations.filter(e => e.playerId === playerId);
   const avg = avgAttrs(evals);
-  const overall = avg ? calcOverall(avg) : null;
+  const overall = avg ? calcFinalOverall(avg, player) : null;
   const tier = avg ? getTier(overall) : null;
 
-  let tableRows = evals.map(ev => `<tr><td>${esc(globalState.players.find(p => p.id === ev.evaluatorId)?.name || ev.evaluatorId)}</td>${ATTRS.map(a => `<td class="vm">${ev[a.key] ?? '—'}</td>`).join('')}<td class="vm" style="font-size:15px">${calcOverall(ev)}</td></tr>`).join('');
+  let tableRows = evals.map(ev => `<tr><td>${esc(globalState.players.find(p => p.id === ev.evaluatorId)?.name || ev.evaluatorId)}</td>${ATTRS.map(a => `<td class="vm">${ev[a.key] ?? '—'}</td>`).join('')}<td class="vm" style="font-size:15px">${calcBaseOverall(ev, player.role)}</td></tr>`).join('');
   let avgRow = avg ? `<tr style="background:rgba(255,184,0,0.08)"><td style="font-weight:700;color:var(--accent)">MÉDIA</td>${ATTRS.map(a => `<td class="vm" style="color:var(--accent)">${avg[a.key]}</td>`).join('')}<td class="vm" style="color:var(--accent);font-size:15px">${overall}</td></tr>` : '';
 
   let colorPicker = '';
@@ -824,13 +889,14 @@ function renderEvalStep() {
       </div>
     </div>
   `).join('');
-  ev.innerHTML = `<div class="step-progress">${dots}<span class="step-label">PASSO ${stepN} DE ${totalSteps}</span></div><div class="wizard-header"><div class="wizard-avatar">${player.photo ? `<img src="${esc(player.photo)}">` : initials(player.name)}</div><div class="wizard-info"><div class="wizard-name">${esc(player.name)}</div><div class="wizard-sub">"${esc(player.apelido)}"</div></div><div class="live-ovr-wrap"><div class="live-ovr-lbl">Overall</div><div class="live-ovr-num" id="live-ovr">${calcOverall(ratings)}</div></div></div><div class="panel"><div class="panel-label">Avalie: ${esc(player.name)}</div>${attrRows}<div style="margin-top:20px;display:flex;gap:12px">${stepN > 1 ? `<button class="btn btn-ghost" onclick="evalState.step--;renderEvalStep()">← Voltar</button>` : ''}<button class="btn btn-gold" onclick="evalState.step++;renderEvalStep()">${stepN < totalSteps ? 'Próximo →' : 'Mata-Mata →'}</button></div></div>`;
+  ev.innerHTML = `<div class="step-progress">${dots}<span class="step-label">PASSO ${stepN} DE ${totalSteps}</span></div><div class="wizard-header"><div class="wizard-avatar">${player.photo ? `<img src="${esc(player.photo)}">` : initials(player.name)}</div><div class="wizard-info"><div class="wizard-name">${esc(player.name)}</div><div class="wizard-sub">"${esc(player.apelido)}"</div></div><div class="live-ovr-wrap"><div class="live-ovr-lbl">Base OVR</div><div class="live-ovr-num" id="live-ovr">${calcBaseOverall(ratings, player.role)}</div></div></div><div class="panel"><div class="panel-label">Avalie: ${esc(player.name)}</div>${attrRows}<div style="margin-top:20px;display:flex;gap:12px">${stepN > 1 ? `<button class="btn btn-ghost" onclick="evalState.step--;renderEvalStep()">← Voltar</button>` : ''}<button class="btn btn-gold" onclick="evalState.step++;renderEvalStep()">${stepN < totalSteps ? 'Próximo →' : 'Mata-Mata →'}</button></div></div>`;
   ATTRS.forEach(a => updateSliderBg(a.key, ratings[a.key]));
 }
 function onSlider(pId, k) {
   const v = parseInt(document.getElementById('sl-' + k).value);
   evalState.ratings[pId][k] = v; document.getElementById('av-' + k).textContent = v; updateSliderBg(k, v);
-  document.getElementById('live-ovr').textContent = calcOverall(evalState.ratings[pId]);
+  const player = globalState.players.find(p => p.id === pId);
+  document.getElementById('live-ovr').textContent = calcBaseOverall(evalState.ratings[pId], player?.role);
 }
 function adjustSlider(pId, k, delta) {
   const slider = document.getElementById('sl-' + k);
@@ -839,7 +905,8 @@ function adjustSlider(pId, k, delta) {
   evalState.ratings[pId][k] = newVal;
   document.getElementById('av-' + k).textContent = newVal;
   updateSliderBg(k, newVal);
-  document.getElementById('live-ovr').textContent = calcOverall(evalState.ratings[pId]);
+  const player = globalState.players.find(p => p.id === pId);
+  document.getElementById('live-ovr').textContent = calcBaseOverall(evalState.ratings[pId], player?.role);
 }
 function updateSliderBg(k, v) { const pct = (v / 99) * 100; document.getElementById('sl-' + k).style.background = `linear-gradient(90deg, var(--accent) ${pct}%, var(--bg-elevated) ${pct}%)`; }
 
