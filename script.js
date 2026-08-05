@@ -89,8 +89,12 @@ let profilesMap = {};
 // =========================================
 function esc(s) { return s ? String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;') : ''; }
 function calcBaseOverall(attrs, role) {
-  if (!role) role = 'Rifler';
-  const weights = ROLE_WEIGHTS[role] || ROLE_WEIGHTS['Rifler'];
+  let r = role || 'Anchor';
+  if (r === 'Rifler') r = 'Anchor';
+  if (r === 'Support') r = 'Suporte';
+  if (r === 'Entry') r = 'Entry Fragger';
+  
+  const weights = ROLE_WEIGHTS[r] || ROLE_WEIGHTS['Anchor'];
   let t = 0;
   for (const [k, w] of Object.entries(weights)) t += (attrs[k] || 0) * w;
   return Math.round(t);
