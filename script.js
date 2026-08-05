@@ -753,7 +753,6 @@ function openDetailModal(playerId) {
     </div>`;
   }
 
-  let rolePicker = '';
   if (loggedInPlayerId) {
     rolePicker = `
     <div style="margin-top:20px; padding-top:16px; border-top:1px solid rgba(255,255,255,0.05)">
