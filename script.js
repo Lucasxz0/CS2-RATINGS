@@ -9,9 +9,9 @@ let sbClient; // inicializado no DOMContentLoaded
 const DEFAULT_PLAYERS = [
   { id: 'vitin', name: 'VITIN', apelido: 'Cafajeste Chucro', role: 'IGL', team: 'CS2', photo: null },
   { id: 'joao', name: 'JOÃO', apelido: 'GRNTT', role: 'AWPer', team: 'CS2', photo: null },
-  { id: 'vini', name: 'VINI', apelido: 'MONGOLOY', role: 'Entry', team: 'CS2', photo: null },
-  { id: 'gabriel', name: 'GABRIEL', apelido: 'CHAVES', role: 'Rifler', team: 'CS2', photo: null },
-  { id: 'luiseira', name: 'LUISEIRA', apelido: 'Capitão Caverna', role: 'Support', team: 'CS2', photo: null },
+  { id: 'vini', name: 'VINI', apelido: 'MONGOLOY', role: 'Entry Fragger', team: 'CS2', photo: null },
+  { id: 'gabriel', name: 'GABRIEL', apelido: 'CHAVES', role: 'Anchor', team: 'CS2', photo: null },
+  { id: 'luiseira', name: 'LUISEIRA', apelido: 'Capitão Caverna', role: 'Suporte', team: 'CS2', photo: null },
   { id: 'lucas', name: 'LUCAS', apelido: 'BUIU', role: 'Lurker', team: 'CS2', photo: null },
 ];
 
@@ -27,11 +27,19 @@ const ATTRS = [
 ];
 const ROLE_WEIGHTS = {
   IGL: { sense: 0.24, impacto: 0.20, comms: 0.15, teamplay: 0.15, aim: 0.14, clutch: 0.08, reflexo: 0.02, tilt: 0.02 },
+  'Entry Fragger': { aim: 0.30, reflexo: 0.20, impacto: 0.18, clutch: 0.12, sense: 0.10, teamplay: 0.05, comms: 0.03, tilt: 0.02 },
   AWPer: { aim: 0.28, reflexo: 0.18, clutch: 0.18, impacto: 0.16, sense: 0.12, teamplay: 0.04, comms: 0.02, tilt: 0.02 },
-  Entry: { aim: 0.30, reflexo: 0.20, impacto: 0.18, clutch: 0.12, sense: 0.10, teamplay: 0.05, comms: 0.03, tilt: 0.02 },
+  Suporte: { teamplay: 0.24, comms: 0.22, sense: 0.20, impacto: 0.14, aim: 0.10, clutch: 0.05, reflexo: 0.03, tilt: 0.02 },
   Lurker: { sense: 0.26, aim: 0.22, clutch: 0.18, impacto: 0.16, reflexo: 0.08, teamplay: 0.05, comms: 0.03, tilt: 0.02 },
-  Support: { teamplay: 0.24, comms: 0.22, sense: 0.20, impacto: 0.14, aim: 0.10, clutch: 0.05, reflexo: 0.03, tilt: 0.02 },
-  Rifler: { aim: 0.25, reflexo: 0.15, impacto: 0.15, sense: 0.15, clutch: 0.12, teamplay: 0.10, comms: 0.05, tilt: 0.03 }
+  Anchor: { clutch: 0.22, sense: 0.20, aim: 0.18, reflexo: 0.15, impacto: 0.10, teamplay: 0.08, tilt: 0.05, comms: 0.02 }
+};
+const ROLE_DISPLAY_NAMES = {
+  IGL: 'IGL',
+  'Entry Fragger': 'Entry',
+  AWPer: 'AWP',
+  Suporte: 'Sup',
+  Lurker: 'Lurk',
+  Anchor: 'Anchor'
 };
 const CARD_ATTRS_LEFT = ['aim', 'reflexo', 'sense'];
 const CARD_ATTRS_RIGHT = ['teamplay', 'clutch', 'comms'];
@@ -678,7 +686,7 @@ function buildCard(player, attrs, overall, tier, size = 'big', playstyles = []) 
   return `<div class="fifa-card ${tc}" ${colorStyle}><div class="card-bg"></div>
     <div class="card-photo" ${photoBg}>${placeholder}</div>
     <div class="card-deco top"></div><div class="card-deco bot"></div>
-    <div class="card-top-left"><div class="card-ovr">${overall !== null ? overall : '??'}</div><div class="card-pos">${esc(player.role)}</div><div class="card-team-sm">${esc(player.team)}</div></div>
+    <div class="card-top-left"><div class="card-ovr">${overall !== null ? overall : '??'}</div><div class="card-pos">${esc(ROLE_DISPLAY_NAMES[player.role] || player.role)}</div><div class="card-team-sm">${esc(player.team)}</div></div>
     <div class="card-edition" style="color:inherit"><span class="card-crown">👑</span><span>LINE</span><span class="card-edition-sub">OFICIAL</span></div>
     <div class="card-frame"></div>
     ${psHtml}
@@ -714,6 +722,7 @@ function openDetailModal(playerId) {
   let avgRow = avg ? `<tr style="background:rgba(255,184,0,0.08)"><td style="font-weight:700;color:var(--accent)">MÉDIA</td>${ATTRS.map(a => `<td class="vm" style="color:var(--accent)">${avg[a.key]}</td>`).join('')}<td class="vm" style="color:var(--accent);font-size:15px">${overall}</td></tr>` : '';
 
   let colorPicker = '';
+  let rolePicker = '';
   if (playerId === loggedInPlayerId) {
     const colors = [
       { name: 'Amarelo', hex: '#F2C411' },
@@ -738,6 +747,15 @@ function openDetailModal(playerId) {
       </div>
       <div style="font-size:11px; color:var(--text-muted); margin-top:8px;">Escolha a cor da sua cartinha, igual no CS.</div>
     </div>`;
+
+    rolePicker = `
+    <div style="margin-top:20px; padding-top:16px; border-top:1px solid rgba(255,255,255,0.05)">
+      <div style="font-size:12px; color:var(--text-sec); margin-bottom:10px; font-weight:700; text-transform:uppercase; letter-spacing:1px;">Sua Função Tática</div>
+      <select class="role-select" onchange="setPlayerRole('${playerId}', this.value)" style="background:var(--bg-elevated); color:white; border:1px solid rgba(255,255,255,0.1); padding:8px 12px; border-radius:6px; font-family:'Rajdhani',sans-serif; font-weight:600; width:100%; max-width:220px; cursor:pointer;">
+        ${['IGL', 'Entry Fragger', 'AWPer', 'Suporte', 'Lurker', 'Anchor'].map(r => `<option value="${r}" ${player.role === r ? 'selected' : ''}>${r}</option>`).join('')}
+      </select>
+      <div style="font-size:11px; color:var(--text-muted); margin-top:8px;">Escolha a sua função tática na equipe. O overall recalculará automaticamente.</div>
+    </div>`;
   }
 
   document.getElementById('detail-content').innerHTML = `
@@ -752,6 +770,7 @@ function openDetailModal(playerId) {
           <label for="file-photo-${playerId}" class="btn btn-dark btn-sm" style="margin:0;cursor:pointer">📸 Trocar foto</label>
         </div>
         ${colorPicker}
+        ${rolePicker}
       </div>
     </div>
     ${evals.length ? `<div style="overflow-x:auto"><table class="stats-tbl"><thead><tr><th>Avaliador</th>${ATTRS.map(a => `<th>${a.short}</th>`).join('')}<th>OVR</th></tr></thead><tbody>${tableRows}${avgRow}</tbody></table></div>` : '<div class="empty">Nenhuma avaliação.</div>'}
@@ -780,6 +799,32 @@ async function setCardColor(playerId, hexColor) {
       toast('Cor não salva. Você precisa adicionar a coluna "card_color" no Supabase.', 'err');
     } else {
       toast('Cor atualizada!', 'ok');
+    }
+  } catch (err) {
+    console.error(err);
+  }
+}
+
+async function setPlayerRole(playerId, newRole) {
+  const p = globalState.players.find(x => x.id === playerId);
+  if (!p) return;
+  
+  // Update state
+  p.role = newRole;
+  
+  // Optimistic UI updates
+  renderCollection();
+  openDetailModal(playerId);
+  updateHeader();
+  
+  // Try saving to DB
+  try {
+    const { error } = await sbClient.from('players').update({ role: newRole }).eq('id', p.db_id);
+    if (error) {
+      console.error(error);
+      toast('Função não salva.', 'err');
+    } else {
+      toast('Função atualizada!', 'ok');
     }
   } catch (err) {
     console.error(err);
