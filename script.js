@@ -26,12 +26,12 @@ const ATTRS = [
   { key: 'impacto', icon: '⭐', short: 'IMPACTO', full: 'IMPACTO NO TIME', desc: 'Influência direta' },
 ];
 const ROLE_WEIGHTS = {
-  IGL: { sense: 0.24, impacto: 0.20, comms: 0.15, teamplay: 0.15, aim: 0.14, clutch: 0.08, reflexo: 0.02, tilt: 0.02 },
+  IGL: { aim: 0.25, sense: 0.20, impacto: 0.15, comms: 0.15, teamplay: 0.12, clutch: 0.08, reflexo: 0.03, tilt: 0.02 },
   'Entry Fragger': { aim: 0.30, reflexo: 0.20, impacto: 0.18, clutch: 0.12, sense: 0.10, teamplay: 0.05, comms: 0.03, tilt: 0.02 },
   AWPer: { aim: 0.28, reflexo: 0.18, clutch: 0.18, impacto: 0.16, sense: 0.12, teamplay: 0.04, comms: 0.02, tilt: 0.02 },
-  Suporte: { teamplay: 0.24, comms: 0.22, sense: 0.20, impacto: 0.14, aim: 0.10, clutch: 0.05, reflexo: 0.03, tilt: 0.02 },
-  Lurker: { sense: 0.26, aim: 0.22, clutch: 0.18, impacto: 0.16, reflexo: 0.08, teamplay: 0.05, comms: 0.03, tilt: 0.02 },
-  Anchor: { clutch: 0.22, sense: 0.20, aim: 0.18, reflexo: 0.15, impacto: 0.10, teamplay: 0.08, tilt: 0.05, comms: 0.02 }
+  Suporte: { aim: 0.24, teamplay: 0.20, comms: 0.18, sense: 0.16, impacto: 0.12, clutch: 0.05, reflexo: 0.03, tilt: 0.02 },
+  Lurker: { aim: 0.26, sense: 0.22, clutch: 0.18, impacto: 0.16, reflexo: 0.08, teamplay: 0.05, comms: 0.03, tilt: 0.02 },
+  Anchor: { aim: 0.25, clutch: 0.20, sense: 0.18, reflexo: 0.15, impacto: 0.10, teamplay: 0.05, tilt: 0.05, comms: 0.02 }
 };
 const ROLE_DISPLAY_NAMES = {
   IGL: 'IGL',
@@ -909,7 +909,23 @@ let evalState = { step: 1, players: [], ratings: {}, mataMata: {} };
 function startEvalWizard() {
   if (!loggedInPlayerId) { toast('Aguarde carregar dados...', 'err'); return; }
   evalState = { step: 1, players: globalState.players.filter(p => p.id !== loggedInPlayerId), ratings: {}, mataMata: {} };
-  evalState.players.forEach(p => { evalState.ratings[p.id] = {}; ATTRS.forEach(a => evalState.ratings[p.id][a.key] = 50); });
+  
+  // Pré-carrega avaliações anteriores se existirem (para permitir edição)
+  const myEvals = globalState.evaluations.filter(e => e.evaluatorId === loggedInPlayerId);
+  const myMM = globalState.mataMataVotes.find(v => v.evaluator_id === currentUser.id);
+
+  evalState.players.forEach(p => { 
+    evalState.ratings[p.id] = {}; 
+    const existing = myEvals.find(e => e.playerId === p.id);
+    ATTRS.forEach(a => {
+      evalState.ratings[p.id][a.key] = existing && existing[a.key] !== undefined ? existing[a.key] : 50;
+    }); 
+  });
+  
+  if (myMM && myMM.votes) {
+    evalState.mataMata = myMM.votes;
+  }
+  
   renderEvalStep();
 }
 
