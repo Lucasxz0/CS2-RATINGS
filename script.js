@@ -729,16 +729,21 @@ function renderEvalStep() {
   const dots = Array.from({ length: totalSteps }, (_, i) => `<div class="step-dot ${i < stepN - 1 ? 'done' : i === stepN - 1 ? 'current' : ''}"></div>`).join('');
   const attrRows = ATTRS.map(a => `
     <div class="attr-row">
-      <span class="attr-icon">${a.icon}</span>
-      <span class="attr-lbl">${a.full}</span>
-      <div class="attr-slider-wrap">
-        <button class="attr-adj" type="button" onclick="adjustSlider('${player.id}','${a.key}',-1)" aria-label="Diminuir">−</button>
-        <div class="attr-slider">
-          <input type="range" id="sl-${a.key}" min="0" max="99" value="${ratings[a.key]}" oninput="onSlider('${player.id}','${a.key}')" />
-        </div>
-        <button class="attr-adj" type="button" onclick="adjustSlider('${player.id}','${a.key}',+1)" aria-label="Aumentar">+</button>
+      <div class="attr-top">
+        <span class="attr-icon">${a.icon}</span>
+        <span class="attr-lbl">${a.full}</span>
+        <div class="attr-val" id="av-${a.key}">${ratings[a.key]}</div>
       </div>
-      <div class="attr-val" id="av-${a.key}">${ratings[a.key]}</div>
+      <div class="attr-slider">
+        <input type="range" id="sl-${a.key}" min="0" max="99" value="${ratings[a.key]}" oninput="onSlider('${player.id}','${a.key}')" />
+      </div>
+      <div class="attr-btns">
+        <button class="attr-adj attr-adj-sub" type="button" onclick="adjustSlider('${player.id}','${a.key}',-5)">−5</button>
+        <button class="attr-adj attr-adj-sub" type="button" onclick="adjustSlider('${player.id}','${a.key}',-1)">−1</button>
+        <div class="attr-btns-spacer"></div>
+        <button class="attr-adj attr-adj-add" type="button" onclick="adjustSlider('${player.id}','${a.key}',+1)">+1</button>
+        <button class="attr-adj attr-adj-add" type="button" onclick="adjustSlider('${player.id}','${a.key}',+5)">+5</button>
+      </div>
     </div>
   `).join('');
   ev.innerHTML = `<div class="step-progress">${dots}<span class="step-label">PASSO ${stepN} DE ${totalSteps}</span></div><div class="wizard-header"><div class="wizard-avatar">${player.photo ? `<img src="${esc(player.photo)}">` : initials(player.name)}</div><div class="wizard-info"><div class="wizard-name">${esc(player.name)}</div><div class="wizard-sub">"${esc(player.apelido)}"</div></div><div class="live-ovr-wrap"><div class="live-ovr-lbl">Overall</div><div class="live-ovr-num" id="live-ovr">${calcOverall(ratings)}</div></div></div><div class="panel"><div class="panel-label">Avalie: ${esc(player.name)}</div>${attrRows}<div style="margin-top:20px;display:flex;gap:12px">${stepN > 1 ? `<button class="btn btn-ghost" onclick="evalState.step--;renderEvalStep()">← Voltar</button>` : ''}<button class="btn btn-gold" onclick="evalState.step++;renderEvalStep()">${stepN < totalSteps ? 'Próximo →' : 'Mata-Mata →'}</button></div></div>`;
