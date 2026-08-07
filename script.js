@@ -1098,6 +1098,28 @@ function openDetailModal(playerId) {
   let colorPicker = '';
   let rolePicker = '';
   let nameEditor = '';
+  
+  const pstylesObj = getPlayerPlaystyles(player.id);
+  let playstylesBlock = '';
+  if (pstylesObj.styles.length > 0) {
+    playstylesBlock = `
+    <div style="margin-top:20px; padding-top:16px; border-top:1px solid rgba(255,255,255,0.05)">
+      <div style="font-size:12px; color:var(--text-sec); margin-bottom:10px; font-weight:700; text-transform:uppercase; letter-spacing:1px;">Playstyles (Mata-Mata)</div>
+      <div style="display:flex; flex-wrap:wrap; gap:8px;">
+        ${pstylesObj.styles.map(ps => {
+          const isNeg = ps.bonus < 0;
+          const bg = isNeg ? 'rgba(229,57,53,0.1)' : 'rgba(255,184,0,0.1)';
+          const color = isNeg ? 'var(--red)' : 'var(--accent)';
+          const border = isNeg ? 'rgba(229,57,53,0.3)' : 'rgba(255,184,0,0.3)';
+          return \`<div style="display:inline-flex; align-items:center; gap:6px; background:\${bg}; color:\${color}; border:1px solid \${border}; padding:6px 12px; border-radius:20px; font-size:12px; font-weight:600; letter-spacing:0.5px; box-shadow:0 2px 8px rgba(0,0,0,0.2);">
+            <span style="font-size:14px;">\${ps.emoji}</span>
+            <span>\${esc(ps.q)}</span>
+          </div>\`;
+        }).join('')}
+      </div>
+    </div>`;
+  }
+  
   if (playerId === loggedInPlayerId) {
     nameEditor = `
     <div style="margin-top:20px; padding-top:16px; border-top:1px solid rgba(255,255,255,0.05)">
@@ -1155,6 +1177,7 @@ function openDetailModal(playerId) {
           <input type="file" id="file-photo-${playerId}" accept="image/*" class="hidden-file" onchange="initCrop(event, '${playerId}', 3/4)" />
           <label for="file-photo-${playerId}" class="btn btn-dark btn-sm" style="margin:0;cursor:pointer">📸 Trocar foto</label>
         </div>
+        ${playstylesBlock}
         ${colorPicker}
         ${rolePicker}
         ${nameEditor}
