@@ -1111,10 +1111,10 @@ function openDetailModal(playerId) {
           const bg = isNeg ? 'rgba(229,57,53,0.1)' : 'rgba(255,184,0,0.1)';
           const color = isNeg ? 'var(--red)' : 'var(--accent)';
           const border = isNeg ? 'rgba(229,57,53,0.3)' : 'rgba(255,184,0,0.3)';
-          return \`<div style="display:inline-flex; align-items:center; gap:6px; background:\${bg}; color:\${color}; border:1px solid \${border}; padding:6px 12px; border-radius:20px; font-size:12px; font-weight:600; letter-spacing:0.5px; box-shadow:0 2px 8px rgba(0,0,0,0.2);">
-            <span style="font-size:14px;">\${ps.emoji}</span>
-            <span>\${esc(ps.q)}</span>
-          </div>\`;
+          return `<div style="display:inline-flex; align-items:center; gap:6px; background:${bg}; color:${color}; border:1px solid ${border}; padding:6px 12px; border-radius:20px; font-size:12px; font-weight:600; letter-spacing:0.5px; box-shadow:0 2px 8px rgba(0,0,0,0.2);">
+            <span style="font-size:14px;">${ps.emoji}</span>
+            <span>${esc(ps.q)}</span>
+          </div>`;
         }).join('')}
       </div>
     </div>`;
