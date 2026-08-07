@@ -3028,3 +3028,144 @@ input[type="range"]::-webkit-slider-thumb:hover {
   text-transform: uppercase;
   letter-spacing: 0.5px;
 }
+/* ===================== TEAM SELECTION REDESIGN ===================== */
+.team-select-container {
+  width: 100%;
+  max-width: 680px;
+  margin: 0 auto;
+  padding: 0 20px 40px;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  animation: fadeIn 0.4s ease-out forwards;
+}
+.team-select-toolbar {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  background: var(--bg-surface);
+  padding: 12px;
+  border-radius: 16px;
+  border: 1px solid rgba(255,255,255,0.05);
+  box-shadow: 0 8px 24px rgba(0,0,0,0.3);
+}
+@media (max-width: 500px) {
+  .team-select-toolbar { flex-direction: column; }
+  .team-create-btn { width: 100%; }
+}
+.team-select-toolbar .input-wrap {
+  margin: 0 !important;
+}
+.team-select-toolbar .input-field {
+  background: var(--bg-elevated) !important;
+  border: 1px solid rgba(255,255,255,0.05) !important;
+}
+.team-select-toolbar .input-field:focus {
+  border-color: var(--accent) !important;
+  background: rgba(255,255,255,0.03) !important;
+}
+.team-create-btn {
+  margin: 0 !important;
+  padding: 0 24px;
+  height: 48px;
+  border-radius: 12px;
+  white-space: nowrap;
+  font-size: 14px;
+}
+.team-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 20px;
+}
+.team-empty-state {
+  grid-column: 1 / -1;
+  text-align: center;
+  padding: 40px 20px;
+  background: rgba(255,255,255,0.02);
+  border: 1px dashed rgba(255,255,255,0.1);
+  border-radius: 16px;
+  color: var(--text-sec);
+  font-size: 15px;
+  line-height: 1.6;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+}
+.team-card {
+  background: var(--bg-surface);
+  border: 1px solid rgba(255,255,255,0.04);
+  border-radius: 16px;
+  padding: 24px 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  position: relative;
+  transition: var(--trans);
+  box-shadow: 0 4px 16px rgba(0,0,0,0.2);
+}
+.team-card:hover {
+  transform: translateY(-4px);
+  border-color: var(--border-acc);
+  box-shadow: 0 8px 24px var(--accent-dim);
+}
+.team-card-lock {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  background: rgba(0,0,0,0.5);
+  border-radius: 50%;
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  border: 1px solid rgba(255,255,255,0.05);
+}
+.team-card-av {
+  width: 76px;
+  height: 76px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--bg-elevated), #2A3240);
+  border: 3px solid rgba(255,255,255,0.08);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--text-sec);
+  margin-bottom: 16px;
+  overflow: hidden;
+  box-shadow: inset 0 2px 4px rgba(0,0,0,0.2);
+}
+.team-card-av img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.team-card-name {
+  font-family: 'Oswald', sans-serif;
+  font-size: 24px;
+  font-weight: 600;
+  color: #fff;
+  margin-bottom: 6px;
+  letter-spacing: 0.5px;
+}
+.team-card-meta {
+  font-size: 13px;
+  color: var(--text-sec);
+  margin-bottom: 20px;
+  line-height: 1.4;
+  white-space: pre-wrap;
+}
+.team-card-enter {
+  width: 100%;
+  border-radius: 12px;
+  font-size: 14px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  padding: 12px 0;
+  font-weight: 700;
+}
