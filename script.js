@@ -690,9 +690,12 @@ async function submitCreateTeam() {
   closeModal('modal-create-team');
   toast('Time criado! Você é o capitão 👑', 'ok');
 
-  // Ao invés de tentar ler o ID retornado pela RPC (que pode vir nulo ou formatado estranho), 
-  // mandamos o sistema recarregar o perfil do usuário e entrar no time automaticamente
-  await resolveTeamAndProceed();
+  if (teamId) {
+    document.getElementById('team-select-container').style.opacity = '0.5';
+    await joinTeamRpc(teamId, hasPassword ? password : null);
+  } else {
+    await loadTeamsList();
+  }
 }
 
 // ---- Entrar em um time ----
