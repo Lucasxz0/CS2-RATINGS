@@ -690,8 +690,9 @@ async function submitCreateTeam() {
   closeModal('modal-create-team');
   toast('Time criado! Você é o capitão 👑', 'ok');
 
-  const { data: team } = await sbClient.from('teams_public').select('*').eq('id', teamId).maybeSingle();
-  if (team) await enterAppWithTeam(team);
+  // Ao invés de tentar ler o ID retornado pela RPC (que pode vir nulo ou formatado estranho), 
+  // mandamos o sistema recarregar o perfil do usuário e entrar no time automaticamente
+  await resolveTeamAndProceed();
 }
 
 // ---- Entrar em um time ----
