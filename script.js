@@ -1050,7 +1050,7 @@ function buildCard(player, attrs, overall, tier, size = 'big', playstyles = []) 
   }
 
   let psHtml = '';
-  if (playstyles && playstyles.length > 0) {
+  if (playstyles && playstyles.length > 0 && size === 'big') {
     psHtml = `<div class="card-playstyles">` + playstyles.map(ps => {
       const isNeg = ps.bonus < 0;
       return `<div class="ps-badge ${isNeg ? 'neg' : 'pos'}" title="${esc(ps.q)}">${ps.emoji}</div>`;
