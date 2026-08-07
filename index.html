@@ -108,7 +108,7 @@
           <div class="reg-step-line"></div>
           <div class="reg-step" id="rstep-2">
             <div class="reg-step-circle">2</div>
-            <span>Seu jogador</span>
+            <span>Seu apelido</span>
           </div>
           <div class="reg-step-line"></div>
           <div class="reg-step" id="rstep-3">
@@ -139,15 +139,20 @@
           </button>
         </div>
 
-        <!-- Step 2: Seleção do Jogador (cards visuais) -->
+        <!-- Step 2: Apelido livre -->
         <div class="reg-panel" id="reg-panel-2">
           <div class="form-header">
             <h2 class="form-title">Qual é o seu nick?</h2>
-            <p class="form-sub">Selecione seu personagem na line</p>
+            <p class="form-sub">Como você quer aparecer na sua cartinha</p>
           </div>
 
-          <div class="player-select-grid" id="player-select-grid">
-            <!-- Gerado por JS -->
+          <div class="input-group">
+            <label class="input-label" for="reg-apelido">Apelido (opcional)</label>
+            <div class="input-wrap">
+              <span class="input-icon">🏷️</span>
+              <input type="text" id="reg-apelido" class="input-field" placeholder="Ex: Cafajeste Chucro"
+                autocomplete="off" maxlength="30" />
+            </div>
           </div>
 
           <div class="reg-nav">
@@ -166,14 +171,14 @@
             <p class="form-sub">Último passo — quase lá!</p>
           </div>
 
-          <!-- Preview do jogador selecionado -->
+          <!-- Preview do jogador -->
           <div class="player-selected-preview" id="player-preview">
             <div class="preview-av" id="preview-av"></div>
             <div class="preview-info">
               <div class="preview-name" id="preview-name"></div>
               <div class="preview-nick" id="preview-nick"></div>
             </div>
-            <button class="preview-change" onclick="regGoStep(2)" title="Trocar jogador">✏️</button>
+            <button class="preview-change" onclick="regGoStep(2)" title="Trocar apelido">✏️</button>
           </div>
 
           <div class="input-group">
@@ -218,6 +223,134 @@
   </div>
   <!-- /LOGIN SCREEN -->
 
+  <!-- ============================= TEAM SELECT SCREEN ============================= -->
+  <div class="login-screen" id="team-select-screen" style="display:none">
+
+    <div class="login-particles" id="team-select-particles"></div>
+
+    <div class="login-logo">
+      <div class="login-logo-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+          <path d="M12 2 4 5v6c0 5 3.4 8.7 8 9 4.6-.3 8-4 8-9V5l-8-3Z" />
+        </svg>
+      </div>
+      <div class="login-logo-text">
+        <span class="login-logo-title">ESCOLHA SEU TIME</span>
+        <span class="login-logo-sub">ENTRE EM UM TIME OU CRIE O SEU</span>
+      </div>
+    </div>
+
+    <div class="team-select-container" id="team-select-container">
+      <div class="team-select-toolbar">
+        <div class="input-wrap" style="flex:1">
+          <span class="input-icon">🔍</span>
+          <input type="text" id="team-search" class="input-field" placeholder="Buscar time..."
+            oninput="filterTeams()" />
+        </div>
+        <button class="btn-login-submit team-create-btn" onclick="openCreateTeamModal()" type="button">
+          <span class="btn-text">✨ Criar Time</span>
+        </button>
+      </div>
+
+      <div class="team-grid" id="team-grid">
+        <!-- Gerado por JS -->
+      </div>
+    </div>
+  </div>
+  <!-- /TEAM SELECT SCREEN -->
+
+  <!-- Create Team Modal -->
+  <div class="overlay" id="modal-create-team">
+    <div class="modal-box" style="max-width:440px">
+      <div class="modal-title">✨ Criar Novo Time</div>
+      <div class="modal-sub">Você entra automaticamente como capitão. Dá pra ajustar tudo depois nas configurações
+        do time.</div>
+
+      <div style="display:flex; justify-content:center; margin-bottom:20px">
+        <input type="file" id="ct-photo-input" accept="image/*" class="hidden-file"
+          onchange="initCrop(event, 'TEAM_NEW', 1)" />
+        <label for="ct-photo-input" class="team-photo-upload" id="ct-photo-preview" title="Escolher foto do time">
+          <span id="ct-photo-placeholder" class="team-photo-placeholder">📷<span>Foto do time</span></span>
+        </label>
+      </div>
+
+      <div class="input-group" style="margin-bottom:14px">
+        <label class="input-label" for="ct-name">Nome do time</label>
+        <input type="text" id="ct-name" class="input-box" placeholder="Ex: Gama FC, Line Oficial..." maxlength="40"
+          style="margin-bottom:0" />
+      </div>
+
+      <div class="team-pw-toggle-row">
+        <label class="switch">
+          <input type="checkbox" id="ct-has-password" onchange="toggleCreatePasswordField()" />
+          <span class="switch-slider"></span>
+        </label>
+        <div>
+          <div class="team-pw-toggle-label">Proteger com senha</div>
+          <div class="team-pw-toggle-sub">Só quem souber a senha consegue entrar no time</div>
+        </div>
+      </div>
+
+      <div class="input-group" id="ct-password-group" style="display:none; margin-top:14px; margin-bottom:0">
+        <label class="input-label" for="ct-password">Senha do time</label>
+        <input type="text" id="ct-password" class="input-box" placeholder="Mínimo 4 caracteres" maxlength="40"
+          style="margin-bottom:0" />
+      </div>
+
+      <div class="modal-actions" style="margin-top:22px">
+        <button class="btn btn-ghost" onclick="closeModal('modal-create-team')">Cancelar</button>
+        <button class="btn btn-gold" id="btn-create-team" onclick="submitCreateTeam()" style="margin-left:auto">Criar
+          Time</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Join Team Password Modal -->
+  <div class="overlay" id="modal-join-password">
+    <div class="modal-box" style="max-width:380px">
+      <div class="modal-title">🔒 Time protegido</div>
+      <div class="modal-sub" id="jp-team-name-label">Digite a senha para entrar neste time.</div>
+      <input type="password" id="jp-password" class="input-box" placeholder="Senha do time" autocomplete="off"
+        onkeydown="if(event.key==='Enter'){submitJoinPassword();}" />
+      <div class="modal-actions">
+        <button class="btn btn-ghost" onclick="closeModal('modal-join-password')">Cancelar</button>
+        <button class="btn btn-gold" id="btn-join-password" onclick="submitJoinPassword()"
+          style="margin-left:auto">Entrar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Team Settings Modal -->
+  <div class="overlay" id="team-settings-modal">
+    <div class="modal-box team-settings-box">
+      <div class="modal-title">⚙️ Configurações do Time</div>
+      <div class="modal-sub">Nome, foto, senha e capitania do time.</div>
+      <div id="team-settings-content">
+        <!-- Gerado por JS -->
+      </div>
+      <div class="modal-actions">
+        <button class="btn btn-ghost" onclick="closeModal('team-settings-modal')">Fechar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Claim Player Card Modal -->
+  <div class="overlay" id="modal-claim-card">
+    <div class="modal-box team-settings-box">
+      <div class="modal-title">🃏 Alguma dessas é sua?</div>
+      <div class="modal-sub">Encontramos cartinhas sem dono nesse time. Se uma delas já tinha avaliações feitas
+        sobre você, reivindique pra não perder o histórico.</div>
+      <div class="team-grid" id="claim-card-grid"
+        style="max-height:40vh; grid-template-columns:repeat(auto-fill, minmax(140px, 1fr))">
+        <!-- Gerado por JS -->
+      </div>
+      <div class="modal-actions" style="margin-top:16px">
+        <button class="btn btn-ghost btn-block" onclick="skipClaimCreateNew()">Nenhuma é minha — criar cartinha
+          nova</button>
+      </div>
+    </div>
+  </div>
+
   <!-- HEADER -->
   <header id="main-header" style="display:none">
     <div class="logo">
@@ -244,6 +377,14 @@
     </nav>
 
     <div class="header-user">
+      <button class="team-badge" id="team-badge" onclick="openTeamSettings()" title="Configurações do time"
+        style="display:none">
+        <div class="team-badge-av" id="team-badge-av"></div>
+        <div class="team-badge-info">
+          <div class="team-badge-name" id="team-badge-name"></div>
+          <div class="team-badge-role" id="team-badge-role"></div>
+        </div>
+      </button>
       <div class="user-badge">
         <div class="user-badge-av" id="header-avatar"></div>
         <div class="user-badge-name" id="header-name"></div>

@@ -6,14 +6,10 @@ const SUPABASE_KEY = 'sb_publishable_0c5ydPhGf8lGIXTjrGiidQ_Jrp1WW_O';
 let sbClient; // inicializado no DOMContentLoaded
 
 
-const DEFAULT_PLAYERS = [
-  { id: 'vitin', name: 'VITIN', apelido: 'Cafajeste Chucro', role: 'IGL', team: 'CS2', photo: null },
-  { id: 'joao', name: 'JOÃO', apelido: 'GRNTT', role: 'AWPer', team: 'CS2', photo: null },
-  { id: 'vini', name: 'VINI', apelido: 'MONGOLOY', role: 'Entry Fragger', team: 'CS2', photo: null },
-  { id: 'gabriel', name: 'GABRIEL', apelido: 'CHAVES', role: 'Anchor', team: 'CS2', photo: null },
-  { id: 'luiseira', name: 'LUISEIRA', apelido: 'Capitão Caverna', role: 'Suporte', team: 'CS2', photo: null },
-  { id: 'lucas', name: 'LUCAS', apelido: 'BUIU', role: 'Lurker', team: 'CS2', photo: null },
-];
+// NOTA: a antiga lista fixa de personagens (DEFAULT_PLAYERS) foi removida.
+// Agora o elenco é dinâmico: cada time tem suas próprias cartinhas,
+// criadas automaticamente quando alguém entra no time (ver create_player_card
+// e claim_player_card no script.js e na migração team_scoped_data_migration.sql).
 
 const ATTRS = [
   { key: 'aim', icon: '🎯', short: 'AIM', full: 'AIM', desc: 'Capacidade de ganhar trocação' },
@@ -79,10 +75,18 @@ let globalState = { players: [], evaluations: [], mataMataVotes: [], clips: [], 
 let currentUser = null; // Supabase user
 let loggedInPlayerId = null; // Ex: 'vitin'
 
-// Mapa auth.users.id -> player_key ('vitin', 'joao', ...), montado a partir da
-// tabela `profiles`. É a ÚNICA fonte confiável para saber "de qual jogador é essa
-// conta", já que auth.users.id e players.id são espaços de UUID diferentes.
-let profilesMap = {};
+// ---- Sistema de Times ----
+let currentTeam = null;          // Time ativo do usuário logado (linha de teams_public)
+let isCaptain = false;           // currentUser é o capitão do currentTeam?
+let teamsListCache = [];         // Lista de times carregada na tela de seleção
+let teamMembersCache = [];       // Membros do time atual (modal de configurações)
+let pendingJoinTeamId = null;    // Time aguardando confirmação de senha
+let newTeamPhotoB64 = null;      // Foto escolhida ao criar um time novo (aguardando salvar)
+let teamSettingsPhotoB64 = null; // Foto escolhida ao editar o time atual (aguardando salvar)
+
+// NOTA: o antigo `profilesMap` (auth.users.id -> player_key via tabela profiles)
+// foi removido. Agora cada cartinha (players) sabe diretamente sua conta dona
+// através da coluna `owner_id`, o que é mais direto e já é escopado por time.
 
 // =========================================
 // UTILS & MATH
@@ -93,7 +97,7 @@ function calcBaseOverall(attrs, role) {
   if (r === 'Rifler') r = 'Anchor';
   if (r === 'Support') r = 'Suporte';
   if (r === 'Entry') r = 'Entry Fragger';
-  
+
   const weights = ROLE_WEIGHTS[r] || ROLE_WEIGHTS['Anchor'];
   let t = 0;
   for (const [k, w] of Object.entries(weights)) t += (attrs[k] || 0) * w;
@@ -101,11 +105,15 @@ function calcBaseOverall(attrs, role) {
 }
 
 function getPlayerPlaystyles(playerId) {
-  const votesCount = {};
-  globalState.mataMataVotes.forEach(vote => {
-    if (!votesCount[vote.category_id]) votesCount[vote.category_id] = {};
-    if (!votesCount[vote.category_id][vote.player_id]) votesCount[vote.category_id][vote.player_id] = 0;
-    votesCount[vote.category_id][vote.player_id]++;
+  // Cada linha de mataMataVotes tem um campo `votes` (JSON: categoryId -> playerId).
+  const votesCount = {}; // { categoryId: { playerId: contagem } }
+  globalState.mataMataVotes.forEach(row => {
+    if (!row.votes) return;
+    for (const categoryId in row.votes) {
+      const votedPlayerId = row.votes[categoryId];
+      if (!votesCount[categoryId]) votesCount[categoryId] = {};
+      votesCount[categoryId][votedPlayerId] = (votesCount[categoryId][votedPlayerId] || 0) + 1;
+    }
   });
   const wonStyles = [];
   let totalBonus = 0;
@@ -158,6 +166,24 @@ const AUTH_ERROR_MAP = {
   'Unable to validate email address: invalid format': 'E-mail inválido.',
 };
 function translateAuthError(msg) { return AUTH_ERROR_MAP[msg] || msg; }
+
+const TEAM_ERROR_MAP = {
+  'wrong_password': 'Senha incorreta.',
+  'team_not_found': 'Este time não existe mais.',
+  'not_authenticated': 'Sua sessão expirou. Faça login novamente.',
+  'invalid_name': 'O nome do time precisa ter entre 2 e 40 caracteres.',
+  'not_captain': 'Apenas o capitão pode alterar essas configurações.',
+  'not_a_member': 'Essa ação não é válida porque você não é membro desse time.',
+  'captain_must_transfer': 'Você é o capitão deste time. Transfira a capitania para outro membro antes de sair ou trocar de time.',
+  'already_has_card': 'Você já tem uma cartinha neste time.',
+  'card_not_available': 'Essa cartinha já foi reivindicada por outra pessoa.',
+  'card_not_found': 'Essa cartinha não existe mais.',
+};
+function translateTeamError(msg) {
+  if (!msg) return 'Erro desconhecido.';
+  for (const key in TEAM_ERROR_MAP) { if (msg.includes(key)) return TEAM_ERROR_MAP[key]; }
+  return msg;
+}
 function toast(msg, type = 'inf') {
   const el = document.createElement('div'); el.className = `toast ${type}`;
   const ic = { ok: '✓', err: '✗', inf: '●' }; const cl = { ok: '#43A047', err: '#E53935', inf: 'var(--accent)' };
@@ -171,8 +197,8 @@ function toast(msg, type = 'inf') {
 // =========================================
 
 // Gera partículas animadas no fundo
-function initParticles() {
-  const container = document.getElementById('login-particles');
+function initParticles(containerId = 'login-particles') {
+  const container = document.getElementById(containerId);
   if (!container) return;
   container.innerHTML = '';
   for (let i = 0; i < 18; i++) {
@@ -229,42 +255,8 @@ function updatePwStrength(pw) {
 // =========================================
 // MULTI-STEP REGISTER
 // =========================================
-let regData = { fullName: '', playerKey: '' };
+let regData = { fullName: '', apelido: '' };
 let regCurrentStep = 1;
-
-async function renderPlayerSelectGrid() {
-  const grid = document.getElementById('player-select-grid');
-  if (!grid) return;
-
-  let takenKeys = [];
-  try {
-    const { data } = await sbClient.from('profiles').select('player_key');
-    takenKeys = (data || []).map(r => r.player_key);
-  } catch (err) { console.error('Erro ao checar personagens ocupados', err); }
-
-  grid.innerHTML = DEFAULT_PLAYERS.map(p => {
-    const taken = takenKeys.includes(p.id);
-    return `
-    <div class="player-card-sel ${regData.playerKey === p.id ? 'selected' : ''} ${taken ? 'taken' : ''}"
-         onclick="selectPlayer('${p.id}', ${taken})" id="pcard-${p.id}" title="${taken ? 'Já escolhido por outra pessoa' : ''}">
-      <div class="player-card-check">✓</div>
-      <div class="player-card-av">${p.photo ? `<img src="${esc(p.photo)}">` : initials(p.name)}</div>
-      <div class="player-card-name">${esc(p.name)}</div>
-      <div class="player-card-nick">${esc(p.apelido)}</div>
-      ${taken ? `<div class="player-card-taken-lbl">Ocupado</div>` : ''}
-    </div>`;
-  }).join('');
-}
-
-function selectPlayer(id, isTaken) {
-  if (isTaken) {
-    return toast('Este personagem já foi escolhido por outra pessoa.', 'err');
-  }
-  regData.playerKey = id;
-  document.querySelectorAll('.player-card-sel').forEach(el => el.classList.remove('selected'));
-  const card = document.getElementById('pcard-' + id);
-  if (card) card.classList.add('selected');
-}
 
 function updateRegSteps(step) {
   regCurrentStep = step;
@@ -296,20 +288,20 @@ function regNextStep(fromStep) {
     regData.fullName = name;
     regGoStep(2);
   } else if (fromStep === 2) {
-    if (!regData.playerKey) { return toast('Selecione seu personagem!', 'err'); }
+    const apelido = document.getElementById('reg-apelido').value.trim();
+    // Apelido é opcional — se não preencher, usamos o primeiro nome como fallback
+    regData.apelido = apelido || regData.fullName.split(' ')[0];
     regGoStep(3);
   }
 }
 
 function updatePlayerPreview() {
-  const p = DEFAULT_PLAYERS.find(x => x.id === regData.playerKey);
-  if (!p) return;
   const av = document.getElementById('preview-av');
   const nm = document.getElementById('preview-name');
   const nk = document.getElementById('preview-nick');
-  if (av) av.textContent = initials(p.name);
-  if (nm) nm.textContent = regData.fullName || p.name;
-  if (nk) nk.textContent = `"${p.apelido}" • ${p.role}`;
+  if (av) av.textContent = initials(regData.fullName);
+  if (nm) nm.textContent = regData.fullName;
+  if (nk) nk.textContent = regData.apelido ? `"${regData.apelido}"` : '';
 }
 
 function shakeInput(id) {
@@ -346,7 +338,6 @@ function switchAuthTab(tab) {
   fCriar.style.flexDirection = 'column';
 
   if (tab === 'criar') {
-    renderPlayerSelectGrid();
     regGoStep(1);
   }
 }
@@ -389,24 +380,14 @@ async function handleRegister() {
 
   if (!email) { shakeInput('reg-email'); return toast('Digite seu e-mail!', 'err'); }
   if (!pass || pass.length < 6) { shakeInput('reg-password'); return toast('Senha deve ter ao menos 6 caracteres!', 'err'); }
-  if (!regData.playerKey) { regGoStep(2); return toast('Selecione seu personagem!', 'err'); }
   if (!regData.fullName) { regGoStep(1); return toast('Digite seu nome!', 'err'); }
 
   btn.disabled = true;
   btn.innerHTML = '<span class="btn-text">Criando conta</span><span class="btn-arrow">⏳</span>';
 
-  // Checa se o personagem já foi escolhido por outra conta antes de criar o usuário
-  const { data: taken } = await sbClient.from('profiles').select('player_key').eq('player_key', regData.playerKey).maybeSingle();
-  if (taken) {
-    btn.disabled = false;
-    btn.innerHTML = '<span class="btn-text">Criar Conta</span><span class="btn-arrow">🚀</span>';
-    regGoStep(2);
-    return toast('Esse personagem já foi escolhido por outra pessoa. Selecione outro!', 'err');
-  }
-
   const { data: signUpData, error: signUpError } = await sbClient.auth.signUp({
     email, password: pass,
-    options: { data: { player_key: regData.playerKey, full_name: regData.fullName } }
+    options: { data: { full_name: regData.fullName, apelido: regData.apelido } }
   });
 
   if (signUpError) {
@@ -429,26 +410,33 @@ async function handleRegister() {
     return;
   }
 
-  // Vincula a conta ao personagem escolhido na tabela profiles.
-  // O UNIQUE em profiles.player_key protege contra corrida (duas pessoas
-  // escolhendo o mesmo personagem ao mesmo tempo).
+  // Cria o perfil (sem vínculo a nenhum time ainda — isso acontece na
+  // tela "Escolha seu Time", logo em seguida).
   const { error: profileError } = await sbClient.from('profiles').insert({
-    id: loginData.user.id, player_key: regData.playerKey, full_name: regData.fullName
+    id: loginData.user.id, full_name: regData.fullName, apelido: regData.apelido
   });
   if (profileError) {
-    toast('Este personagem acabou de ser escolhido por outra pessoa. Fale com um admin.', 'err');
+    console.error(profileError);
+    toast('Erro ao criar seu perfil. Fale com um admin.', 'err');
     await sbClient.auth.signOut();
     return;
   }
 
-  toast('Conta criada! Bem-vindo à line 🏆', 'ok');
+  toast('Conta criada! Bem-vindo 🏆', 'ok');
+
+  // Garante que a checagem de time rode com o perfil já existente, mesmo que
+  // o listener de auth tenha disparado antes deste insert terminar.
+  if (currentUser) await resolveTeamAndProceed();
 }
 
 
 async function logout() {
   await sbClient.auth.signOut();
-  currentUser = null; loggedInPlayerId = null;
+  currentUser = null; loggedInPlayerId = null; currentTeam = null; isCaptain = false;
   document.getElementById('login-screen').style.display = 'flex';
+  document.getElementById('login-screen').style.opacity = '1';
+  document.getElementById('team-select-screen').style.display = 'none';
+  document.getElementById('team-badge').style.display = 'none';
   document.getElementById('main-header').style.display = 'none';
   document.getElementById('main-content').style.display = 'none';
 }
@@ -466,7 +454,8 @@ async function init() {
 async function handleAuthChange(session) {
   if (session) {
     currentUser = session.user;
-    loggedInPlayerId = currentUser.user_metadata?.player_key;
+    // loggedInPlayerId agora é calculado depois do fetchAllData, comparando
+    // players.owner_id com o UUID da conta (ver enterAppWithTeam / finishEnteringApp).
 
     // Oculta login com fade
     const ls = document.getElementById('login-screen');
@@ -474,101 +463,501 @@ async function handleAuthChange(session) {
     ls.style.transition = 'opacity 0.5s';
     setTimeout(() => { ls.style.display = 'none'; }, 500);
 
-    document.getElementById('main-header').style.display = 'flex';
-    document.getElementById('main-content').style.display = 'block';
-
-    toast('Sincronizando dados...', 'inf');
-    await fetchAllData();
-    updateHeader();
-    nav('colecao');
+    // Antes de entrar no app, verifica se o usuário já está em um time.
+    // Se não estiver, mostra a tela de seleção/criação de time.
+    await resolveTeamAndProceed();
   } else {
-    currentUser = null; loggedInPlayerId = null;
+    currentUser = null; loggedInPlayerId = null; currentTeam = null; isCaptain = false;
     const ls = document.getElementById('login-screen');
     ls.style.display = 'flex';
     ls.style.opacity = '1';
+    document.getElementById('team-select-screen').style.display = 'none';
+    document.getElementById('team-badge').style.display = 'none';
     document.getElementById('main-header').style.display = 'none';
     document.getElementById('main-content').style.display = 'none';
   }
 }
 
 // =========================================
-// DATA FETCHING (SUPABASE)
+// SISTEMA DE TIMES
 // =========================================
-async function fetchAllData() {
-  // Inicializar com jogadores padrão caso o banco esteja vazio
-  globalState.players = [...DEFAULT_PLAYERS];
 
-  // Garante que todos os jogadores padrão existem na tabela `players` (idempotente)
-  await seedPlayers();
-
+// Decide se o usuário entra direto no app (já tem time) ou precisa
+// escolher/criar um time primeiro.
+async function resolveTeamAndProceed() {
+  let teamId = null;
   try {
-    const [playersRes, evalsRes, mmRes, clipsRes, commRes, profilesRes] = await Promise.all([
-      sbClient.from('players').select('*'),
-      sbClient.from('evaluations').select('*'),
-      sbClient.from('mata_mata_votes').select('*'),
-      sbClient.from('clips').select('*'),
-      sbClient.from('comments').select('*'),
-      sbClient.from('profiles').select('*')
-    ]);
-
-    // Monta o mapa auth_id -> player_key ANTES de processar as outras tabelas,
-    // pois evaluations/mata_mata_votes/clips/comments dependem dele.
-    profilesMap = {};
-    if (profilesRes.data) {
-      profilesRes.data.forEach(pr => { profilesMap[pr.id] = pr.player_key; });
-    }
-
-    if (playersRes.data && playersRes.data.length > 0) {
-      // Merge players db with defaults
-      globalState.players = playersRes.data.map(dbP => {
-        const def = DEFAULT_PLAYERS.find(dp => dp.id === dbP.player_key) || {};
-        return {
-          id: dbP.player_key, // Mantemos o ID como player_key para compatibilidade
-          db_id: dbP.id, // UUID real
-          name: dbP.name || def.name,
-          apelido: dbP.apelido || def.apelido,
-          role: dbP.role || def.role,
-          team: dbP.team || def.team,
-          photo: dbP.photo,
-          card_color: dbP.card_color
-        };
-      });
-    }
-
-    if (evalsRes.data) {
-      globalState.evaluations = evalsRes.data.map(e => ({
-        ...e,
-        // evaluator_id é auth.users.id -> passa por profiles; player_id é players.id
-        evaluatorId: getPlayerKeyByAuthId(e.evaluator_id),
-        playerId: getPlayerKeyByPlayersId(e.player_id),
-      }));
-    }
-
-    if (mmRes.data) {
-      globalState.mataMataVotes = mmRes.data.map(m => ({
-        ...m, evaluatorId: getPlayerKeyByAuthId(m.evaluator_id)
-      }));
-    }
-
-    if (clipsRes.data) {
-      globalState.clips = clipsRes.data.map(c => ({
-        // clips.player_id é auth.users.id (quem postou), não players.id
-        ...c, playerId: getPlayerKeyByAuthId(c.player_id), mediaType: c.media_type, mediaUrl: c.media_url
-      }));
-    }
-
-    if (commRes.data) {
-      globalState.comments = commRes.data.map(cm => ({
-        ...cm, playerId: getPlayerKeyByAuthId(cm.player_id), clipId: cm.clip_id
-      }));
-    }
+    const { data } = await sbClient.from('profiles').select('team_id').eq('id', currentUser.id).maybeSingle();
+    teamId = data?.team_id || null;
   } catch (err) {
-    console.error("Erro ao puxar dados", err);
-    toast("Aviso: usando placeholders, configure o Supabase.", "err");
+    console.error('Erro ao checar time do usuário', err);
+  }
+
+  if (!teamId) return showTeamSelectScreen();
+
+  const { data: team, error } = await sbClient.from('teams_public').select('*').eq('id', teamId).maybeSingle();
+  if (error || !team) {
+    // Time foi apagado (ex: capitão saiu e era o único membro) — volta pra seleção
+    return showTeamSelectScreen();
+  }
+  await enterAppWithTeam(team);
+}
+
+async function showTeamSelectScreen() {
+  document.getElementById('main-header').style.display = 'none';
+  document.getElementById('main-content').style.display = 'none';
+  document.getElementById('team-badge').style.display = 'none';
+  const screen = document.getElementById('team-select-screen');
+  screen.style.display = 'flex';
+  screen.style.opacity = '1';
+  initParticles('team-select-particles');
+  await loadTeamsList();
+}
+
+async function enterAppWithTeam(team) {
+  currentTeam = team;
+  isCaptain = !!(currentUser && team.captain_id === currentUser.id);
+
+  document.getElementById('team-select-screen').style.display = 'none';
+  document.getElementById('main-header').style.display = 'flex';
+  document.getElementById('main-content').style.display = 'block';
+
+  renderTeamBadge();
+  toast('Sincronizando dados...', 'inf');
+  await fetchAllData();
+
+  const myCard = globalState.players.find(p => p.owner_id === currentUser.id);
+  if (myCard) {
+    updateHeader();
+    nav('colecao');
+  } else {
+    await promptPlayerCardSetup();
   }
 }
 
-// player_id em `evaluations` e `player_id` em `players` referenciam a tabela
+// Roda depois que a cartinha do usuário já existe (criada ou reivindicada).
+async function finishEnteringApp() {
+  await fetchAllData();
+  updateHeader();
+  nav('colecao');
+}
+
+// Decide se mostra o seletor "essa cartinha é sua?" ou cria uma nova direto.
+async function promptPlayerCardSetup() {
+  const { data: unclaimed, error } = await sbClient
+    .from('players').select('*')
+    .eq('team_id', currentTeam.id).is('owner_id', null);
+
+  if (error) { console.error(error); return autoCreateMyCard(); }
+
+  if (unclaimed && unclaimed.length > 0) {
+    renderClaimCardModal(unclaimed);
+    openModal('modal-claim-card');
+  } else {
+    await autoCreateMyCard();
+  }
+}
+
+function renderClaimCardModal(list) {
+  const grid = document.getElementById('claim-card-grid');
+  grid.innerHTML = list.map(p => `
+    <div class="team-card" style="cursor:pointer" onclick="claimCard('${p.id}')">
+      <div class="team-card-av">${p.photo ? `<img src="${esc(p.photo)}">` : initials(p.name)}</div>
+      <div class="team-card-name">${esc(p.name)}</div>
+      <div class="team-card-meta">${p.apelido ? `"${esc(p.apelido)}"` : ''}</div>
+      <button class="btn btn-gold team-card-enter" onclick="event.stopPropagation();claimCard('${p.id}')">Essa é
+        minha</button>
+    </div>
+  `).join('');
+}
+
+async function claimCard(playerId) {
+  closeModal('modal-claim-card');
+  const { error } = await sbClient.rpc('claim_player_card', { p_player_id: playerId });
+  if (error) {
+    console.error(error);
+    toast(translateTeamError(error.message), 'err');
+    return promptPlayerCardSetup();
+  }
+  toast('Cartinha vinculada à sua conta — histórico preservado! 🎉', 'ok');
+  await finishEnteringApp();
+}
+
+async function skipClaimCreateNew() {
+  closeModal('modal-claim-card');
+  await autoCreateMyCard();
+}
+
+async function autoCreateMyCard() {
+  const { error } = await sbClient.rpc('create_player_card', { p_team_id: currentTeam.id });
+  if (error) {
+    console.error(error);
+    toast('Erro ao criar sua cartinha: ' + translateTeamError(error.message), 'err');
+  }
+  await finishEnteringApp();
+}
+
+function teamInitials(name) { return name ? name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2) : '??'; }
+
+function renderTeamBadge() {
+  if (!currentTeam) return;
+  const badge = document.getElementById('team-badge');
+  badge.style.display = 'flex';
+  document.getElementById('team-badge-av').innerHTML = currentTeam.photo ? `<img src="${esc(currentTeam.photo)}">` : teamInitials(currentTeam.name);
+  document.getElementById('team-badge-name').textContent = currentTeam.name;
+  document.getElementById('team-badge-role').textContent = isCaptain ? '👑 Capitão' : '';
+}
+
+// ---- Listagem / busca de times ----
+async function loadTeamsList() {
+  const grid = document.getElementById('team-grid');
+  grid.innerHTML = `<div class="team-empty-state">Carregando times...</div>`;
+  try {
+    const { data, error } = await sbClient.from('teams_public').select('*').order('member_count', { ascending: false });
+    if (error) throw error;
+    teamsListCache = data || [];
+  } catch (err) {
+    console.error('Erro ao carregar times', err);
+    teamsListCache = [];
+    toast('Não foi possível carregar os times. Verifique se a migração SQL foi executada no Supabase.', 'err');
+  }
+  const search = document.getElementById('team-search');
+  if (search) search.value = '';
+  renderTeamGrid(teamsListCache);
+}
+
+function filterTeams() {
+  const q = document.getElementById('team-search').value.trim().toLowerCase();
+  const filtered = q ? teamsListCache.filter(t => t.name.toLowerCase().includes(q)) : teamsListCache;
+  renderTeamGrid(filtered);
+}
+
+function renderTeamGrid(list) {
+  const grid = document.getElementById('team-grid');
+  if (!list.length) {
+    grid.innerHTML = `<div class="team-empty-state">Nenhum time encontrado.<br>Que tal criar o seu?
+      <button class="btn btn-gold btn-sm" onclick="openCreateTeamModal()">✨ Criar Time</button></div>`;
+    return;
+  }
+  grid.innerHTML = list.map(t => `
+    <div class="team-card">
+      ${t.has_password ? `<span class="team-card-lock" title="Time protegido por senha">🔒</span>` : ''}
+      <div class="team-card-av">${t.photo ? `<img src="${esc(t.photo)}">` : teamInitials(t.name)}</div>
+      <div class="team-card-name">${esc(t.name)}</div>
+      <div class="team-card-meta">${t.member_count} ${t.member_count === 1 ? 'membro' : 'membros'}${t.captain_name ? ' • Cap. ' + esc(t.captain_name) : ''}</div>
+      <button class="btn btn-gold team-card-enter" onclick="attemptJoinTeam('${t.id}')">Entrar</button>
+    </div>
+  `).join('');
+}
+
+// ---- Criar time ----
+function openCreateTeamModal() {
+  document.getElementById('ct-name').value = '';
+  document.getElementById('ct-has-password').checked = false;
+  document.getElementById('ct-password').value = '';
+  document.getElementById('ct-password-group').style.display = 'none';
+  newTeamPhotoB64 = null;
+  document.getElementById('ct-photo-preview').innerHTML = `<span id="ct-photo-placeholder" class="team-photo-placeholder">📷<span>Foto do time</span></span>`;
+  openModal('modal-create-team');
+}
+
+function toggleCreatePasswordField() {
+  const checked = document.getElementById('ct-has-password').checked;
+  const group = document.getElementById('ct-password-group');
+  group.style.display = checked ? 'flex' : 'none';
+  group.style.flexDirection = 'column';
+}
+
+async function submitCreateTeam() {
+  const name = document.getElementById('ct-name').value.trim();
+  const hasPassword = document.getElementById('ct-has-password').checked;
+  const password = document.getElementById('ct-password').value;
+
+  if (!name || name.length < 2) { shakeInput('ct-name'); return toast('Digite o nome do time!', 'err'); }
+  if (hasPassword && password.length < 4) { shakeInput('ct-password'); return toast('A senha deve ter ao menos 4 caracteres!', 'err'); }
+
+  const btn = document.getElementById('btn-create-team');
+  btn.disabled = true; btn.textContent = 'Criando...';
+
+  const { data: teamId, error } = await sbClient.rpc('create_team', {
+    p_name: name, p_photo: newTeamPhotoB64, p_password: hasPassword ? password : null
+  });
+
+  btn.disabled = false; btn.textContent = 'Criar Time';
+
+  if (error) { console.error(error); return toast(translateTeamError(error.message), 'err'); }
+
+  closeModal('modal-create-team');
+  toast('Time criado! Você é o capitão 👑', 'ok');
+
+  const { data: team } = await sbClient.from('teams_public').select('*').eq('id', teamId).maybeSingle();
+  if (team) await enterAppWithTeam(team);
+}
+
+// ---- Entrar em um time ----
+function attemptJoinTeam(teamId) {
+  const team = teamsListCache.find(t => t.id === teamId);
+  if (!team) return;
+  if (team.has_password) {
+    pendingJoinTeamId = teamId;
+    document.getElementById('jp-team-name-label').textContent = `Digite a senha para entrar em "${team.name}".`;
+    document.getElementById('jp-password').value = '';
+    openModal('modal-join-password');
+    setTimeout(() => document.getElementById('jp-password').focus(), 150);
+  } else {
+    joinTeamRpc(teamId, null);
+  }
+}
+
+async function submitJoinPassword() {
+  const pass = document.getElementById('jp-password').value;
+  if (!pass) { shakeInput('jp-password'); return toast('Digite a senha!', 'err'); }
+  await joinTeamRpc(pendingJoinTeamId, pass);
+}
+
+async function joinTeamRpc(teamId, password) {
+  const btn = document.getElementById('btn-join-password');
+  const wasFromModal = document.getElementById('modal-join-password').classList.contains('open');
+  if (wasFromModal) { btn.disabled = true; btn.textContent = 'Entrando...'; }
+
+  const { error } = await sbClient.rpc('join_team', { p_team_id: teamId, p_password: password });
+
+  if (wasFromModal) { btn.disabled = false; btn.textContent = 'Entrar'; }
+
+  if (error) { console.error(error); return toast(translateTeamError(error.message), 'err'); }
+
+  closeModal('modal-join-password');
+  pendingJoinTeamId = null;
+  toast('Você entrou no time! 🎉', 'ok');
+
+  const { data: team } = await sbClient.from('teams_public').select('*').eq('id', teamId).maybeSingle();
+  if (team) await enterAppWithTeam(team);
+}
+
+// ---- Configurações do time ----
+async function openTeamSettings() {
+  if (!currentTeam) return;
+  openModal('team-settings-modal');
+  document.getElementById('team-settings-content').innerHTML = `<div class="empty">Carregando...</div>`;
+  teamSettingsPhotoB64 = null;
+
+  const [teamRes, membersRes] = await Promise.all([
+    sbClient.from('teams_public').select('*').eq('id', currentTeam.id).maybeSingle(),
+    sbClient.from('team_members_public').select('*').eq('team_id', currentTeam.id).order('joined_at')
+  ]);
+
+  if (teamRes.error || !teamRes.data) {
+    document.getElementById('team-settings-content').innerHTML = `<div class="empty">Não foi possível carregar o time.</div>`;
+    return;
+  }
+
+  currentTeam = teamRes.data;
+  isCaptain = !!(currentUser && currentTeam.captain_id === currentUser.id);
+  teamMembersCache = membersRes.data || [];
+  renderTeamBadge();
+  renderTeamSettingsContent();
+}
+
+function renderTeamSettingsContent() {
+  const t = currentTeam;
+
+  const membersHtml = teamMembersCache.map(m => {
+    const isTeamCaptain = m.user_id === t.captain_id;
+    const displayName = m.full_name || 'Sem nome';
+    const safeName = esc(displayName).replace(/'/g, "\\'");
+    return `
+    <div class="team-member-row">
+      <div class="team-member-av">${initials(displayName)}</div>
+      <div class="team-member-name">${esc(displayName)}${isTeamCaptain ? '<span class="team-member-crown" title="Capitão">👑</span>' : ''}</div>
+      ${(isCaptain && !isTeamCaptain) ? `<button class="team-member-transfer-btn" onclick="transferCaptain('${m.user_id}', '${safeName}')">Tornar Capitão</button>` : ''}
+    </div>`;
+  }).join('');
+
+  const photoBlock = `
+    <div class="team-settings-photo-row">
+      <input type="file" id="ts-photo-input" accept="image/*" class="hidden-file" onchange="initCrop(event, 'TEAM_SETTINGS', 1)" ${isCaptain ? '' : 'disabled'} />
+      <label for="ts-photo-input" class="team-photo-upload ${isCaptain ? 'editable' : ''}" id="ts-photo-preview" title="${isCaptain ? 'Trocar foto do time' : ''}">
+        ${t.photo ? `<img src="${esc(t.photo)}">` : `<span class="team-photo-placeholder">${isCaptain ? '📷' : '🛡️'}<span>${isCaptain ? 'Trocar' : 'Time'}</span></span>`}
+      </label>
+      <div style="flex:1; min-width:0">
+        <div class="team-settings-name-view" id="ts-name-view" style="display:${isCaptain ? 'none' : 'block'}">${esc(t.name)}</div>
+        <input type="text" id="ts-name-input" class="input-box" value="${esc(t.name)}" maxlength="40" style="margin:0; display:${isCaptain ? 'block' : 'none'}" />
+        <div class="team-settings-sub">Criado em ${new Date(t.created_at).toLocaleDateString('pt-BR')} • ${t.member_count} ${t.member_count === 1 ? 'membro' : 'membros'}</div>
+      </div>
+    </div>`;
+
+  let passwordBlock;
+  if (isCaptain) {
+    passwordBlock = `
+    <div class="team-settings-section">
+      <div class="team-settings-section-title">Senha de acesso</div>
+      <div class="team-pw-toggle-row">
+        <label class="switch">
+          <input type="checkbox" id="ts-has-password" ${t.has_password ? 'checked' : ''} onchange="toggleSettingsPasswordField()" />
+          <span class="switch-slider"></span>
+        </label>
+        <div>
+          <div class="team-pw-toggle-label">Proteger com senha</div>
+          <div class="team-pw-toggle-sub">${t.has_password ? 'Time protegido. Deixe em branco para manter a senha atual.' : 'Só quem souber a senha consegue entrar no time'}</div>
+        </div>
+      </div>
+      <div class="input-group" id="ts-password-group" style="display:${t.has_password ? 'flex' : 'none'}; flex-direction:column; margin-top:12px; margin-bottom:0">
+        <label class="input-label" for="ts-password">${t.has_password ? 'Trocar senha (opcional)' : 'Senha do time'}</label>
+        <input type="text" id="ts-password" class="input-box" placeholder="Mínimo 4 caracteres" maxlength="40" style="margin-bottom:0" />
+      </div>
+    </div>`;
+  } else {
+    passwordBlock = `
+    <div class="team-settings-section">
+      <div class="team-settings-section-title">Senha de acesso</div>
+      <div class="team-readonly-note">${t.has_password ? '🔒 Este time é protegido por senha.' : '🔓 Este time está aberto — qualquer um pode entrar.'}</div>
+    </div>`;
+  }
+
+  const membersBlock = `
+    <div class="team-settings-section">
+      <div class="team-settings-section-title">Membros (${teamMembersCache.length})</div>
+      <div class="team-members-list">${membersHtml || '<div class="empty">Nenhum membro encontrado.</div>'}</div>
+    </div>`;
+
+  const saveBlock = isCaptain ? `
+    <div class="team-settings-section">
+      <button class="btn btn-gold btn-block" onclick="submitTeamSettings()">💾 Salvar Alterações</button>
+    </div>` : '';
+
+  const footerBlock = `
+    <div class="team-settings-section">
+      <button class="btn btn-ghost btn-block" onclick="switchTeam()">🔄 Trocar de Time</button>
+    </div>`;
+
+  document.getElementById('team-settings-content').innerHTML = photoBlock + passwordBlock + membersBlock + saveBlock + footerBlock;
+}
+
+function toggleSettingsPasswordField() {
+  const checked = document.getElementById('ts-has-password').checked;
+  document.getElementById('ts-password-group').style.display = checked ? 'flex' : 'none';
+}
+
+async function submitTeamSettings() {
+  if (!isCaptain) return;
+  const name = document.getElementById('ts-name-input').value.trim();
+  const hasPasswordChecked = document.getElementById('ts-has-password').checked;
+  const passwordField = document.getElementById('ts-password');
+  const passwordVal = passwordField ? passwordField.value : '';
+
+  if (!name || name.length < 2) { shakeInput('ts-name-input'); return toast('O nome do time precisa ter ao menos 2 caracteres!', 'err'); }
+  if (hasPasswordChecked && !currentTeam.has_password && passwordVal.length < 4) {
+    shakeInput('ts-password'); return toast('Defina uma senha com ao menos 4 caracteres!', 'err');
+  }
+  if (hasPasswordChecked && passwordVal && passwordVal.length < 4) {
+    shakeInput('ts-password'); return toast('A senha deve ter ao menos 4 caracteres!', 'err');
+  }
+
+  const { error } = await sbClient.rpc('update_team_settings', {
+    p_team_id: currentTeam.id,
+    p_name: name,
+    p_photo: teamSettingsPhotoB64,
+    p_password: hasPasswordChecked ? (passwordVal || null) : null,
+    p_remove_password: !hasPasswordChecked
+  });
+
+  if (error) { console.error(error); return toast(translateTeamError(error.message), 'err'); }
+
+  toast('Configurações salvas! ✅', 'ok');
+  teamSettingsPhotoB64 = null;
+
+  const { data: team } = await sbClient.from('teams_public').select('*').eq('id', currentTeam.id).maybeSingle();
+  if (team) { currentTeam = team; renderTeamBadge(); }
+  renderTeamSettingsContent();
+}
+
+async function transferCaptain(newCaptainId, name) {
+  if (!isCaptain) return;
+  if (!confirm(`Transferir a capitania do time para ${name}? Você deixará de ser capitão.`)) return;
+
+  const { error } = await sbClient.rpc('transfer_captain', { p_team_id: currentTeam.id, p_new_captain_id: newCaptainId });
+  if (error) { console.error(error); return toast(translateTeamError(error.message), 'err'); }
+
+  toast(`${name} agora é o capitão do time! 👑`, 'ok');
+
+  const { data: team } = await sbClient.from('teams_public').select('*').eq('id', currentTeam.id).maybeSingle();
+  if (team) {
+    currentTeam = team;
+    isCaptain = !!(currentUser && team.captain_id === currentUser.id);
+    renderTeamBadge();
+  }
+  renderTeamSettingsContent();
+}
+
+async function switchTeam() {
+  if (!confirm('Trocar de time? Você poderá entrar em outro time ou criar um novo.')) return;
+
+  const { error } = await sbClient.rpc('leave_team');
+  if (error) { console.error(error); return toast(translateTeamError(error.message), 'err'); }
+
+  closeModal('team-settings-modal');
+  currentTeam = null; isCaptain = false;
+  toast('Você saiu do time.', 'inf');
+  await showTeamSelectScreen();
+}
+
+// =========================================
+// DATA FETCHING (SUPABASE)
+// =========================================
+async function fetchAllData() {
+  if (!currentTeam) return;
+
+  try {
+    const [playersRes, evalsRes, mmRes, clipsRes, commRes] = await Promise.all([
+      sbClient.from('players').select('*').eq('team_id', currentTeam.id),
+      sbClient.from('evaluations').select('*').eq('team_id', currentTeam.id),
+      sbClient.from('mata_mata_votes').select('*').eq('team_id', currentTeam.id),
+      sbClient.from('clips').select('*').eq('team_id', currentTeam.id),
+      sbClient.from('comments').select('*').eq('team_id', currentTeam.id)
+    ]);
+
+    globalState.players = (playersRes.data || []).map(dbP => ({
+      id: dbP.player_key, // Mantemos o ID como player_key para compatibilidade no front-end
+      db_id: dbP.id, // UUID real
+      owner_id: dbP.owner_id, // conta dona desta cartinha (null = sem dono ainda)
+      name: dbP.name,
+      apelido: dbP.apelido,
+      role: dbP.role,
+      team: dbP.team,
+      photo: dbP.photo,
+      card_color: dbP.card_color
+    }));
+
+    globalState.evaluations = (evalsRes.data || []).map(e => ({
+      ...e,
+      evaluatorId: getPlayerKeyByAuthId(e.evaluator_id),
+      playerId: getPlayerKeyByPlayersId(e.player_id),
+    }));
+
+    globalState.mataMataVotes = (mmRes.data || []).map(m => ({
+      ...m, evaluatorId: getPlayerKeyByAuthId(m.evaluator_id)
+    }));
+
+    globalState.clips = (clipsRes.data || []).map(c => ({
+      // clips.player_id é auth.users.id (quem postou), não players.id
+      ...c, playerId: getPlayerKeyByAuthId(c.player_id), mediaType: c.media_type, mediaUrl: c.media_url
+    }));
+
+    globalState.comments = (commRes.data || []).map(cm => ({
+      ...cm, playerId: getPlayerKeyByAuthId(cm.player_id), clipId: cm.clip_id
+    }));
+
+    // Recalcula quem é o jogador logado dentro deste time (via owner_id),
+    // já que times diferentes têm cartinhas diferentes para a mesma conta.
+    const myPlayer = globalState.players.find(p => p.owner_id === currentUser?.id);
+    loggedInPlayerId = myPlayer ? myPlayer.id : null;
+  } catch (err) {
+    console.error("Erro ao puxar dados", err);
+    toast("Erro ao carregar dados do time.", "err");
+  }
+}
+
+// player_id em `evaluations` e `id` em `players` referenciam a tabela
 // `players` (players.id / "db_id"). Use esta função para traduzir esse tipo de UUID.
 function getPlayerKeyByPlayersId(uuid) {
   const p = globalState.players.find(x => x.db_id === uuid);
@@ -576,35 +965,21 @@ function getPlayerKeyByPlayersId(uuid) {
 }
 
 // evaluator_id em `evaluations`/`mata_mata_votes` e player_id em `clips`/`comments`
-// na verdade guardam o UUID de auth.users (quem está logado), não players.id.
-// Para traduzir esse UUID em player_key, é preciso passar por `profiles`.
-function getPlayerKeyByAuthId(uuid) {
-  return profilesMap[uuid] || null;
-}
-
-// Retorna o objeto jogador completo a partir de um auth.users.id (usado em clips/comments)
+// guardam o UUID de auth.users (quem está logado). Como cada cartinha (players)
+// agora sabe diretamente quem é a sua conta dona (owner_id), não precisamos mais
+// passar pela tabela `profiles` para essa tradução.
 function getPlayerByAuthId(uuid) {
-  const key = profilesMap[uuid];
-  return key ? globalState.players.find(p => p.id === key) : null;
+  if (!uuid) return null;
+  return globalState.players.find(p => p.owner_id === uuid) || null;
+}
+function getPlayerKeyByAuthId(uuid) {
+  const p = getPlayerByAuthId(uuid);
+  return p ? p.id : null;
 }
 
 function getPlayerUUIDByKey(key) {
   const p = globalState.players.find(x => x.id === key);
   return p ? p.db_id : null;
-}
-
-// Garante que todo jogador de DEFAULT_PLAYERS exista na tabela `players` desde o
-// início, com um db_id válido — antes disso, avaliações sobre jogadores que ainda
-// não tinham foto enviada eram descartadas silenciosamente em submitEvaluation().
-async function seedPlayers() {
-  try {
-    const rows = DEFAULT_PLAYERS.map(p => ({
-      player_key: p.id, name: p.name, apelido: p.apelido, role: p.role, team: p.team
-    }));
-    await sbClient.from('players').upsert(rows, { onConflict: 'player_key', ignoreDuplicates: true });
-  } catch (err) {
-    console.error('Erro ao popular players', err);
-  }
 }
 
 function updateHeader() {
@@ -641,7 +1016,7 @@ function nav(id) {
   if (id === 'avaliar') startEvalWizard();
   if (id === 'matamata') renderMMResults();
   if (id === 'admin') renderAdminPanel();
-  
+
   // Scroll ao topo ao trocar de seção no mobile
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
@@ -725,7 +1100,17 @@ function openDetailModal(playerId) {
 
   let colorPicker = '';
   let rolePicker = '';
+  let nameEditor = '';
   if (playerId === loggedInPlayerId) {
+    nameEditor = `
+    <div style="margin-top:20px; padding-top:16px; border-top:1px solid rgba(255,255,255,0.05)">
+      <div style="font-size:12px; color:var(--text-sec); margin-bottom:10px; font-weight:700; text-transform:uppercase; letter-spacing:1px;">Nome e Apelido</div>
+      <div style="display:flex; flex-direction:column; gap:8px; max-width:260px">
+        <input type="text" id="edit-name-${playerId}" class="input-box" value="${esc(player.name)}" maxlength="30" placeholder="Nome" style="margin-bottom:0" />
+        <input type="text" id="edit-apelido-${playerId}" class="input-box" value="${esc(player.apelido || '')}" maxlength="30" placeholder="Apelido" style="margin-bottom:0" />
+        <button class="btn btn-dark btn-sm" style="margin:0" onclick="saveNameApelido('${playerId}')">💾 Salvar nome/apelido</button>
+      </div>
+    </div>`;
     const colors = [
       { name: 'Amarelo', hex: '#F2C411' },
       { name: 'Roxo', hex: '#A01C95' },
@@ -775,6 +1160,7 @@ function openDetailModal(playerId) {
         </div>
         ${colorPicker}
         ${rolePicker}
+        ${nameEditor}
       </div>
     </div>
     ${evals.length ? `<div style="overflow-x:auto"><table class="stats-tbl"><thead><tr><th>Avaliador</th>${ATTRS.map(a => `<th>${a.short}</th>`).join('')}<th>OVR</th></tr></thead><tbody>${tableRows}${avgRow}</tbody></table></div>` : '<div class="empty">Nenhuma avaliação.</div>'}
@@ -785,15 +1171,15 @@ function openDetailModal(playerId) {
 async function setCardColor(playerId, hexColor) {
   const p = globalState.players.find(x => x.id === playerId);
   if (!p) return;
-  
+
   // Update state
   p.card_color = hexColor || null;
-  
+
   // Optimistic UI updates
   renderCollection();
   openDetailModal(playerId);
   updateHeader();
-  
+
   // Try saving to DB
   try {
     const updateObj = hexColor ? { card_color: hexColor } : { card_color: null };
@@ -812,15 +1198,15 @@ async function setCardColor(playerId, hexColor) {
 async function setPlayerRole(playerId, newRole) {
   const p = globalState.players.find(x => x.id === playerId);
   if (!p) return;
-  
+
   // Update state
   p.role = newRole;
-  
+
   // Optimistic UI updates
   renderCollection();
   openDetailModal(playerId);
   updateHeader();
-  
+
   // Try saving to DB
   try {
     const { error } = await sbClient.from('players').update({ role: newRole }).eq('id', p.db_id);
@@ -833,6 +1219,26 @@ async function setPlayerRole(playerId, newRole) {
   } catch (err) {
     console.error(err);
   }
+}
+
+async function saveNameApelido(playerId) {
+  const p = globalState.players.find(x => x.id === playerId);
+  if (!p) return;
+  const nameInput = document.getElementById('edit-name-' + playerId);
+  const apelidoInput = document.getElementById('edit-apelido-' + playerId);
+  const newName = nameInput.value.trim();
+  const newApelido = apelidoInput.value.trim();
+
+  if (!newName) { shakeInput('edit-name-' + playerId); return toast('O nome não pode ficar em branco!', 'err'); }
+
+  p.name = newName; p.apelido = newApelido;
+  renderCollection(); openDetailModal(playerId); updateHeader();
+
+  try {
+    const { error } = await sbClient.from('players').update({ name: newName, apelido: newApelido }).eq('id', p.db_id);
+    if (error) { console.error(error); toast('Nome/apelido não salvo.', 'err'); }
+    else toast('Cartinha atualizada!', 'ok');
+  } catch (err) { console.error(err); }
 }
 
 // =========================================
@@ -881,18 +1287,24 @@ async function confirmCrop() {
     document.getElementById('clip-image-preview').style.display = 'block';
     document.getElementById('clip-image-preview').querySelector('img').src = b64;
     document.getElementById('clip-image-input').dataset.b64 = b64;
+  } else if (cropTargetId === 'TEAM_NEW') {
+    // Foto do time — modal de criação (ainda não salvo, aguarda "Criar Time")
+    newTeamPhotoB64 = b64;
+    const preview = document.getElementById('ct-photo-preview');
+    if (preview) preview.innerHTML = `<img src="${b64}">`;
+  } else if (cropTargetId === 'TEAM_SETTINGS') {
+    // Foto do time — modal de configurações (aguarda "Salvar Alterações")
+    teamSettingsPhotoB64 = b64;
+    const preview = document.getElementById('ts-photo-preview');
+    if (preview) preview.innerHTML = `<img src="${b64}">`;
+    toast('Foto pronta! Clique em "Salvar Alterações" para confirmar.', 'inf');
   } else {
-    // Player photo
+    // Player photo — toda cartinha agora vem do banco, então db_id sempre existe
     const p = globalState.players.find(x => x.id === cropTargetId);
-    if (p) {
+    if (p && p.db_id) {
       toast('Salvando foto no banco...', 'inf');
       p.photo = b64;
-      if (p.db_id) {
-        await sbClient.from('players').update({ photo: b64 }).eq('id', p.db_id);
-      } else {
-        await sbClient.from('players').insert({ player_key: p.id, name: p.name, apelido: p.apelido, role: p.role, team: p.team, photo: b64 });
-        await fetchAllData(); // reload
-      }
+      await sbClient.from('players').update({ photo: b64 }).eq('id', p.db_id);
       toast('Foto salva!', 'ok');
       renderCollection(); openDetailModal(p.id);
     }
@@ -907,23 +1319,23 @@ let evalState = { step: 1, players: [], ratings: {}, mataMata: {} };
 function startEvalWizard() {
   if (!loggedInPlayerId) { toast('Aguarde carregar dados...', 'err'); return; }
   evalState = { step: 1, players: globalState.players.filter(p => p.id !== loggedInPlayerId), ratings: {}, mataMata: {} };
-  
+
   // Pré-carrega avaliações anteriores se existirem (para permitir edição)
   const myEvals = globalState.evaluations.filter(e => e.evaluatorId === loggedInPlayerId);
   const myMM = globalState.mataMataVotes.find(v => v.evaluator_id === currentUser.id);
 
-  evalState.players.forEach(p => { 
-    evalState.ratings[p.id] = {}; 
+  evalState.players.forEach(p => {
+    evalState.ratings[p.id] = {};
     const existing = myEvals.find(e => e.playerId === p.id);
     ATTRS.forEach(a => {
       evalState.ratings[p.id][a.key] = existing && existing[a.key] !== undefined ? existing[a.key] : 50;
-    }); 
+    });
   });
-  
+
   if (myMM && myMM.votes) {
     evalState.mataMata = myMM.votes;
   }
-  
+
   renderEvalStep();
 }
 
@@ -990,18 +1402,20 @@ async function submitEvaluation() {
     const evalInserts = evalState.players.map(p => ({
       evaluator_id: currentUser.id, // auth.users.id
       player_id: getPlayerUUIDByKey(p.id),
+      team_id: currentTeam.id,
       ...evalState.ratings[p.id]
     })).filter(x => x.player_id); // garante q p achou o uuid
 
     if (evalInserts.length > 0) {
       // Supabase nao tem UPSERT massivo facil se a constraint (evaluator_id, player_id) for acionada
-      // Vamos tentar dar upsert/delete manual ou apenas insert
-      await sbClient.from('evaluations').delete().eq('evaluator_id', currentUser.id); // deleta antigos pra garantir
+      // Vamos tentar dar upsert/delete manual ou apenas insert.
+      // Escopado por team_id: avaliações feitas em OUTROS times não são tocadas.
+      await sbClient.from('evaluations').delete().eq('evaluator_id', currentUser.id).eq('team_id', currentTeam.id);
       await sbClient.from('evaluations').insert(evalInserts);
     }
 
-    await sbClient.from('mata_mata_votes').delete().eq('evaluator_id', currentUser.id);
-    await sbClient.from('mata_mata_votes').insert({ evaluator_id: currentUser.id, votes: evalState.mataMata });
+    await sbClient.from('mata_mata_votes').delete().eq('evaluator_id', currentUser.id).eq('team_id', currentTeam.id);
+    await sbClient.from('mata_mata_votes').insert({ evaluator_id: currentUser.id, team_id: currentTeam.id, votes: evalState.mataMata });
 
     await fetchAllData();
     toast('Avaliação salva! 🏆', 'ok');
@@ -1118,6 +1532,7 @@ async function submitClip() {
 
   await sbClient.from('clips').insert({
     player_id: currentUser.id,
+    team_id: currentTeam.id,
     title, description: desc, media_type: mediaType, media_url: mediaUrl
   });
 
@@ -1145,7 +1560,7 @@ async function toggleReact(clipId, type) {
 async function addComment(clipId) {
   const inp = document.getElementById('cin-' + clipId);
   const txt = inp.value.trim(); if (!txt) return;
-  await sbClient.from('comments').insert({ clip_id: clipId, player_id: currentUser.id, text: txt });
+  await sbClient.from('comments').insert({ clip_id: clipId, player_id: currentUser.id, team_id: currentTeam.id, text: txt });
   await fetchAllData(); renderClips();
 }
 
@@ -1195,8 +1610,8 @@ function renderAdminPanel() {
           <span class="admin-card-icon">🗑️</span>
           <span class="admin-card-title">Zerar Avaliações</span>
         </div>
-        <p class="admin-card-desc">Apaga todas as avaliações. As cartinhas voltarão a aparecer como <strong>bloqueadas</strong>.</p>
-        <div class="admin-stats"><span class="admin-count">${evCount}</span> avaliações no banco</div>
+        <p class="admin-card-desc">Apaga as avaliações <strong>deste time</strong>. As cartinhas voltarão a aparecer como <strong>bloqueadas</strong>. Outros times não são afetados.</p>
+        <div class="admin-stats"><span class="admin-count">${evCount}</span> avaliações neste time</div>
         <button class="btn btn-red" onclick="adminConfirmReset('evaluations')">Apagar Avaliações</button>
       </div>
 
@@ -1205,8 +1620,8 @@ function renderAdminPanel() {
           <span class="admin-card-icon">🗑️</span>
           <span class="admin-card-title">Zerar Mata-Mata</span>
         </div>
-        <p class="admin-card-desc">Apaga todos os votos do Mata-Mata. Todos poderão <strong>votar novamente</strong>.</p>
-        <div class="admin-stats"><span class="admin-count">${mmCount}</span> votos no banco</div>
+        <p class="admin-card-desc">Apaga os votos do Mata-Mata <strong>deste time</strong>. Todos poderão <strong>votar novamente</strong>. Outros times não são afetados.</p>
+        <div class="admin-stats"><span class="admin-count">${mmCount}</span> votos neste time</div>
         <button class="btn btn-red" onclick="adminConfirmReset('matamata')">Apagar Votos</button>
       </div>
 
@@ -1215,7 +1630,7 @@ function renderAdminPanel() {
           <span class="admin-card-icon">💥</span>
           <span class="admin-card-title">Zerar Tudo</span>
         </div>
-        <p class="admin-card-desc">Apaga <strong>todas as avaliações</strong> e <strong>todos os votos</strong> do Mata-Mata de uma vez. O site volta ao estado inicial.</p>
+        <p class="admin-card-desc">Apaga <strong>todas as avaliações</strong> e <strong>todos os votos</strong> do Mata-Mata <strong>deste time</strong>. Outros times não são afetados.</p>
         <button class="btn btn-red" style="align-self:flex-start" onclick="adminConfirmReset('all')">💥 Zerar Tudo</button>
       </div>
 
@@ -1241,16 +1656,16 @@ function adminConfirmReset(target) {
   adminResetTarget = target;
   const map = {
     evaluations: {
-      title: '⚠️ Apagar todas as avaliações',
-      desc: 'Todas as avaliações de TODOS os jogadores serão apagadas permanentemente. As cartinhas voltarão a aparecer como bloqueadas. Esta ação NÃO pode ser desfeita.'
+      title: '⚠️ Apagar avaliações deste time',
+      desc: `Todas as avaliações do time "${currentTeam?.name || ''}" serão apagadas permanentemente. As cartinhas voltarão a aparecer como bloqueadas. Times não afetados. Esta ação NÃO pode ser desfeita.`
     },
     matamata: {
-      title: '⚠️ Apagar todos os votos',
-      desc: 'Todos os votos do Mata-Mata serão apagados permanentemente. Todos poderão votar novamente do zero. Esta ação NÃO pode ser desfeita.'
+      title: '⚠️ Apagar votos deste time',
+      desc: `Todos os votos do Mata-Mata do time "${currentTeam?.name || ''}" serão apagados permanentemente. Todos poderão votar novamente. Times não afetados. Esta ação NÃO pode ser desfeita.`
     },
     all: {
-      title: '💥 Zerar tudo',
-      desc: 'TODAS as avaliações E TODOS os votos do Mata-Mata serão apagados permanentemente. O site voltará ao estado inicial. Esta ação NÃO pode ser desfeita.'
+      title: '💥 Zerar este time',
+      desc: `TODAS as avaliações E TODOS os votos do Mata-Mata do time "${currentTeam?.name || ''}" serão apagados permanentemente. Outros times não são afetados. Esta ação NÃO pode ser desfeita.`
     },
   };
   const m = map[target];
@@ -1279,11 +1694,11 @@ async function executeAdminReset() {
 
   try {
     if (adminResetTarget === 'evaluations' || adminResetTarget === 'all') {
-      const { error } = await sbClient.from('evaluations').delete().gte('created_at', '2000-01-01T00:00:00Z');
+      const { error } = await sbClient.from('evaluations').delete().eq('team_id', currentTeam.id);
       if (error) throw error;
     }
     if (adminResetTarget === 'matamata' || adminResetTarget === 'all') {
-      const { error } = await sbClient.from('mata_mata_votes').delete().gte('created_at', '2000-01-01T00:00:00Z');
+      const { error } = await sbClient.from('mata_mata_votes').delete().eq('team_id', currentTeam.id);
       if (error) throw error;
     }
     closeAdminConfirm();
