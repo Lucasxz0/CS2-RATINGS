@@ -2799,3 +2799,176 @@ input[type="range"]::-webkit-slider-thumb:hover {
 }
 
 
+/* ===================== TEAM SETTINGS REDESIGN (SENIOR UX/UI) ===================== */
+.team-settings-photo-row {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  background: var(--bg-elevated);
+  padding: 20px;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  margin-bottom: 24px;
+}
+.team-photo-upload {
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  background: var(--bg-surface);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  border: 2px dashed var(--border-acc);
+  cursor: default;
+  transition: var(--trans);
+  flex-shrink: 0;
+}
+.team-photo-upload.editable {
+  cursor: pointer;
+}
+.team-photo-upload.editable:hover {
+  border-color: var(--accent);
+  box-shadow: 0 0 15px var(--accent-glow);
+}
+.team-photo-upload img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.team-photo-placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  color: var(--text-sec);
+  font-size: 20px;
+}
+.team-photo-placeholder span {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+.team-settings-name-view {
+  font-size: 24px;
+  font-weight: 700;
+  color: #fff;
+  margin-bottom: 4px;
+  font-family: 'Oswald', sans-serif;
+  letter-spacing: 0.5px;
+}
+.team-settings-sub {
+  font-size: 13px;
+  color: var(--text-sec);
+}
+.team-settings-section {
+  background: var(--bg-surface);
+  border-radius: var(--radius);
+  padding: 20px;
+  margin-bottom: 20px;
+  border: 1px solid rgba(255, 255, 255, 0.03);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+.team-settings-section-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--accent);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  margin-bottom: 16px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.team-settings-section-title::before {
+  content: '';
+  display: block;
+  width: 4px;
+  height: 14px;
+  background: var(--accent);
+  border-radius: 2px;
+}
+.team-pw-toggle-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+.team-pw-toggle-label {
+  font-weight: 600;
+  font-size: 15px;
+  margin-bottom: 4px;
+  color: var(--text);
+}
+.team-pw-toggle-sub {
+  font-size: 13px;
+  color: var(--text-sec);
+  line-height: 1.4;
+}
+.team-readonly-note {
+  font-size: 14px;
+  color: var(--text-sec);
+  background: var(--bg-elevated);
+  padding: 12px 16px;
+  border-radius: var(--radius-sm);
+  border-left: 3px solid var(--accent);
+}
+.team-members-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.team-member-row {
+  display: flex;
+  align-items: center;
+  padding: 12px 16px;
+  background: var(--bg-elevated);
+  border-radius: var(--radius-sm);
+  transition: var(--trans);
+  border: 1px solid transparent;
+}
+.team-member-row:hover {
+  background: rgba(255, 255, 255, 0.03);
+  border-color: rgba(255, 255, 255, 0.05);
+}
+.team-member-av {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #2A3240, #1A2230);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 14px;
+  color: #fff;
+  margin-right: 12px;
+  border: 1px solid var(--border);
+}
+.team-member-name {
+  flex: 1;
+  font-weight: 500;
+  font-size: 15px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.team-member-crown {
+  font-size: 14px;
+  filter: drop-shadow(0 0 4px var(--accent-glow));
+}
+.team-member-transfer-btn {
+  background: transparent;
+  border: 1px solid var(--border-acc);
+  color: var(--accent);
+  padding: 6px 12px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: var(--trans);
+}
+.team-member-transfer-btn:hover {
+  background: var(--accent-dim);
+  border-color: var(--accent);
+}
