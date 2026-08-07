@@ -690,12 +690,7 @@ async function submitCreateTeam() {
   closeModal('modal-create-team');
   toast('Time criado! Você é o capitão 👑', 'ok');
 
-  if (teamId) {
-    document.getElementById('team-select-container').style.opacity = '0.5';
-    await joinTeamRpc(teamId, hasPassword ? password : null);
-  } else {
-    await loadTeamsList();
-  }
+  await loadTeamsList();
 }
 
 // ---- Entrar em um time ----
@@ -1789,3 +1784,5 @@ document.addEventListener('DOMContentLoaded', () => {
   initPwListener();
   init();
 });
+
+
