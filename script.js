@@ -993,9 +993,6 @@ function updateHeader() {
   // Mostra/esconde botão admin no nav mobile
   const mbnAdmin = document.getElementById('mbn-admin');
   if (mbnAdmin) mbnAdmin.style.display = loggedInPlayerId === 'lucas' ? 'flex' : 'none';
-  // Exibe o menu mobile após login
-  const mobileNav = document.getElementById('mobile-bottom-nav');
-  if (mobileNav) mobileNav.style.display = 'flex';
 }
 
 // =========================================
