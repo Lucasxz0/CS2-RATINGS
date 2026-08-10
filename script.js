@@ -397,6 +397,11 @@ async function submitUpdatePassword() {
   btn.innerText = 'Salvar Nova Senha';
 }
 
+async function cancelPasswordReset() {
+  closeModal('modal-update-password');
+  await logout();
+}
+
 async function handleRegister() {
   const email = document.getElementById('reg-email').value.trim();
   const pass = document.getElementById('reg-password').value;
@@ -1061,7 +1066,12 @@ function nav(id) {
 
 function openModal(id) { document.getElementById(id).classList.add('open'); }
 function closeModal(id) { document.getElementById(id).classList.remove('open'); }
-document.querySelectorAll('.overlay').forEach(el => el.addEventListener('click', e => { if (e.target === el) el.classList.remove('open'); }));
+document.querySelectorAll('.overlay').forEach(el => el.addEventListener('click', e => {
+  if (e.target === el) {
+    if (el.id === 'modal-update-password') return; // Obriga a alterar a senha
+    el.classList.remove('open');
+  }
+}));
 
 // =========================================
 // CARD BUILDER & COLLECTION
