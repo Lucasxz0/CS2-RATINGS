@@ -601,7 +601,13 @@ async function enterAppWithTeam(team) {
   const myCard = globalState.players.find(p => p.owner_id === currentUser.id);
   if (myCard) {
     updateHeader();
-    nav('colecao');
+    const lastNavKey = `lastNav_${currentUser.id}_${currentTeam.id}`;
+    const lastNav = localStorage.getItem(lastNavKey);
+    if (lastNav && document.getElementById('section-' + lastNav)) {
+      nav(lastNav);
+    } else {
+      nav('colecao');
+    }
   } else {
     await promptPlayerCardSetup();
   }
@@ -1095,6 +1101,10 @@ function nav(id) {
   if (id === 'avaliar') startEvalWizard();
   if (id === 'matamata') renderMMResults();
   if (id === 'admin') renderAdminPanel();
+
+  if (currentUser && currentTeam) {
+    localStorage.setItem(`lastNav_${currentUser.id}_${currentTeam.id}`, id);
+  }
 
   // Scroll ao topo ao trocar de seção no mobile
   window.scrollTo({ top: 0, behavior: 'smooth' });
