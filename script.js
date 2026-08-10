@@ -1268,9 +1268,8 @@ function openDetailModal(playerId) {
           ARSENAL_ATTRS.forEach(a => { if (avg[a.key] > bestArsenalVal) { bestArsenalVal = avg[a.key]; bestArsenal = a; } });
           
           const arsenalRows = ARSENAL_ATTRS.map(a => {
-            let starsHtml = '';
-            for (let i = 1; i <= 5; i++) { starsHtml += `<span class="star-rating static ${i <= Math.round(avg[a.key]) ? 'active' : ''}">★</span>`; }
-            return `<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px; font-size:14px;"><span style="color:var(--text);">${a.short}</span><span style="display:flex; gap:8px; align-items:center;"><div class="stars-container static">${starsHtml}</div><span style="color:var(--accent); font-weight:700; width:24px; text-align:right;">${avg[a.key].toFixed(1)}</span></span></div>`;
+            const fillPct = (avg[a.key] / 5) * 100;
+            return `<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px; font-size:14px;"><span style="color:var(--text);">${a.short}</span><span style="display:flex; gap:8px; align-items:center;"><div class="star-component static" style="--fill: ${fillPct}%;"><div class="stars-spacer">★★★★★</div><div class="stars-bg">★★★★★</div><div class="stars-fill">★★★★★</div></div></span></div>`;
           }).join('');
           
           let arsenalBlock = `<div style="margin-top:20px; padding-top:16px; border-top:1px solid rgba(255,255,255,0.05)"><div style="font-size:12px; color:var(--text-sec); margin-bottom:10px; font-weight:700; text-transform:uppercase; letter-spacing:1px;">Perfil de Jogo</div><div style="background:var(--bg-elevated); border:1px solid var(--border); border-radius:var(--radius); padding:16px; margin-bottom:12px;"><div style="color:var(--text-sec); font-size:12px; text-transform:uppercase; font-weight:700; margin-bottom:12px;">🔫 Arsenal</div>${arsenalRows}${bestArsenal ? `<div style="margin-top:12px; padding-top:12px; border-top:1px dashed var(--border); color:var(--accent); font-weight:700; font-size:13px; text-transform:uppercase;">🔫 Especialidade: ${bestArsenal.short} — ${bestArsenalVal.toFixed(1)}/5</div>` : ''}${player.signature_weapon ? `<div style="margin-top:8px; color:var(--text); font-weight:600; font-size:13px;">⭐ Arma assinatura: <span style="color:var(--accent);">${esc(player.signature_weapon)}</span></div>` : ''}</div>`;
@@ -1279,9 +1278,8 @@ function openDetailModal(playerId) {
           const mapRows = MAP_POOL.map(a => {
             const val5 = avg[a.key] || 0;
             if (val5 > bestMapVal) { bestMapVal = val5; bestMap = a; }
-            let starsHtml = '';
-            for (let i = 1; i <= 5; i++) { starsHtml += `<span class="star-rating static ${i <= Math.round(val5) ? 'active' : ''}">★</span>`; }
-            return { html: `<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px; font-size:14px;"><span style="color:var(--text);">${a.short}</span><span style="display:flex; gap:8px; align-items:center;"><div class="stars-container static">${starsHtml}</div><span style="color:var(--accent); font-weight:700; width:24px; text-align:right;">${val5.toFixed(1)}</span></span></div>`, val: val5 };
+            const fillPct = (val5 / 5) * 100;
+            return { html: `<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px; font-size:14px;"><span style="color:var(--text);">${a.short}</span><span style="display:flex; gap:8px; align-items:center;"><div class="star-component static" style="--fill: ${fillPct}%;"><div class="stars-spacer">★★★★★</div><div class="stars-bg">★★★★★</div><div class="stars-fill">★★★★★</div></div></span></div>`, val: val5 };
           }).sort((a,b) => b.val - a.val).map(x => x.html).join('');
           
           let mapPoolBlock = `<div style="background:var(--bg-elevated); border:1px solid var(--border); border-radius:var(--radius); padding:16px;"><div style="color:var(--text-sec); font-size:12px; text-transform:uppercase; font-weight:700; margin-bottom:12px;">🗺️ Map Pool</div>${mapRows}${bestMap ? `<div style="margin-top:12px; padding-top:12px; border-top:1px dashed var(--border); color:var(--accent); font-weight:700; font-size:13px; text-transform:uppercase;">🏆 Melhor Mapa: ${bestMap.short} — ${bestMapVal.toFixed(1)}/5</div>` : ''}</div></div>`;
@@ -1505,18 +1503,18 @@ function renderEvalStep() {
   `).join('');
     const arsenalRows = ARSENAL_ATTRS.map(a => {
       const v = ratings[a.key] || 0;
-      let starsHtml = '';
-      for (let i = 1; i <= 5; i++) {
-        starsHtml += `<span class="star-rating ${i <= v ? 'active' : ''}" onclick="onStarClick('${player.id}','${a.key}',${i})">★</span>`;
-      }
+      const hitZones = Array.from({length:10}, (_, i) => `<div class="hit-zone" onclick="onStarClick('${player.id}','${a.key}', ${(i+1)*0.5})"></div>`).join('');
       return `
         <div class="attr-row" style="align-items:center; display:flex; justify-content:space-between; padding: 12px 16px;">
           <div class="attr-top" style="margin-bottom:0; width:auto;">
             <span class="attr-icon">${a.icon}</span>
             <span class="attr-lbl">${a.short}</span>
           </div>
-          <div class="stars-container" id="stars-${player.id}-${a.key}">
-            ${starsHtml}
+          <div class="star-component" id="stars-${player.id}-${a.key}" style="--fill: ${(v / 5) * 100}%;">
+            <div class="stars-spacer">★★★★★</div>
+            <div class="stars-bg">★★★★★</div>
+            <div class="stars-fill">★★★★★</div>
+            <div class="stars-hitbox">${hitZones}</div>
           </div>
         </div>
       `;
@@ -1524,18 +1522,18 @@ function renderEvalStep() {
 
     const mapRows = MAP_POOL.map(a => {
       const v = ratings[a.key] || 0;
-      let starsHtml = '';
-      for (let i = 1; i <= 5; i++) {
-        starsHtml += `<span class="star-rating ${i <= v ? 'active' : ''}" onclick="onStarClick('${player.id}','${a.key}',${i})">★</span>`;
-      }
+      const hitZones = Array.from({length:10}, (_, i) => `<div class="hit-zone" onclick="onStarClick('${player.id}','${a.key}', ${(i+1)*0.5})"></div>`).join('');
       return `
         <div class="attr-row" style="align-items:center; display:flex; justify-content:space-between; padding: 12px 16px;">
           <div class="attr-top" style="margin-bottom:0; width:auto;">
             <span class="attr-icon">🗺️</span>
             <span class="attr-lbl">${a.short}</span>
           </div>
-          <div class="stars-container" id="stars-${player.id}-${a.key}">
-            ${starsHtml}
+          <div class="star-component" id="stars-${player.id}-${a.key}" style="--fill: ${(v / 5) * 100}%;">
+            <div class="stars-spacer">★★★★★</div>
+            <div class="stars-bg">★★★★★</div>
+            <div class="stars-fill">★★★★★</div>
+            <div class="stars-hitbox">${hitZones}</div>
           </div>
         </div>
       `;
@@ -1546,11 +1544,8 @@ function renderEvalStep() {
 }
 function onStarClick(pId, k, v) {
   evalState.ratings[pId][k] = v;
-  let starsHtml = '';
-  for (let i = 1; i <= 5; i++) {
-    starsHtml += `<span class="star-rating ${i <= v ? 'active' : ''}" onclick="onStarClick('${pId}','${k}',${i})">★</span>`;
-  }
-  document.getElementById('stars-' + pId + '-' + k).innerHTML = starsHtml;
+  const container = document.getElementById('stars-' + pId + '-' + k);
+  if (container) container.style.setProperty('--fill', (v / 5) * 100 + '%');
 }
 function onSlider(pId, k) {
   const v = parseInt(document.getElementById('sl-' + k).value);

@@ -1,4 +1,4 @@
-﻿/* ===================== RESET ===================== */
+/* ===================== RESET ===================== */
 *,
 *::before,
 *::after {
@@ -3170,31 +3170,49 @@ input[type="range"]::-webkit-slider-thumb:hover {
   font-weight: 700;
 }
 
-/* Arsenal Stars */
-.stars-container {
-  display: flex;
-  gap: 4px;
-}
-.star-rating {
+/* Star Component (Senior Implementation) */
+.star-component {
+  position: relative;
+  display: inline-block;
   font-size: 20px;
   color: var(--border);
-  cursor: pointer;
-  transition: color 0.2s;
   user-select: none;
+  letter-spacing: 2px;
 }
-.star-rating.active {
-  color: var(--accent);
-}
-.star-rating:hover {
-  color: #FFE066;
-}
-.stars-container.static .star-rating {
-  cursor: default;
+.star-component.static {
   font-size: 16px;
 }
-.stars-container.static .star-rating:hover {
-  color: inherit;
+.star-component .stars-bg {
+  position: absolute;
+  top: 0;
+  left: 0;
+  pointer-events: none;
 }
-.stars-container.static .star-rating.active:hover {
-  color: var(--accent);
+.star-component .stars-fill {
+  position: absolute;
+  top: 0;
+  left: 0;
+  pointer-events: none;
+  color: transparent;
+  background: linear-gradient(90deg, var(--accent) var(--fill, 0%), transparent var(--fill, 0%));
+  -webkit-background-clip: text;
+  background-clip: text;
+  white-space: nowrap;
+}
+.star-component .stars-hitbox {
+  display: flex;
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 2;
+}
+.star-component .hit-zone {
+  flex: 1;
+  cursor: pointer;
+}
+.star-component .stars-spacer {
+  visibility: hidden;
+  white-space: nowrap;
 }
