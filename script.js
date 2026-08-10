@@ -1004,11 +1004,14 @@ async function fetchAllData() {
       card_color: dbP.card_color
     }));
 
-    globalState.evaluations = (evalsRes.data || []).map(e => ({
-      ...e,
-      evaluatorId: getPlayerKeyByAuthId(e.evaluator_id),
-      playerId: getPlayerKeyByPlayersId(e.player_id),
-    }));
+    globalState.evaluations = (evalsRes.data || []).map(e => {
+      MAP_POOL.forEach(m => { if (e[m.key] > 5) e[m.key] = 0; });
+      return {
+        ...e,
+        evaluatorId: getPlayerKeyByAuthId(e.evaluator_id),
+        playerId: getPlayerKeyByPlayersId(e.player_id),
+      };
+    });
 
     globalState.mataMataVotes = (mmRes.data || []).map(m => ({
       ...m, evaluatorId: getPlayerKeyByAuthId(m.evaluator_id)
