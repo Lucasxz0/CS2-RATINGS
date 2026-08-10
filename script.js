@@ -26,7 +26,8 @@ const MAP_POOL = [
   { key: 'nuke', short: 'Nuke' },
   { key: 'ancient', short: 'Ancient' },
   { key: 'cache', short: 'Cache' },
-  { key: 'overpass', short: 'Overpass' }
+  { key: 'overpass', short: 'Overpass' },
+  { key: 'anubis', short: 'Anubis' }
 ];
 
 const CS2_WEAPONS = [
@@ -1279,7 +1280,7 @@ function openDetailModal(playerId) {
             const val5 = avg[a.key] || 0;
             if (val5 > bestMapVal) { bestMapVal = val5; bestMap = a; }
             const fillPct = (val5 / 5) * 100;
-            return { html: `<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px; font-size:14px;"><span style="color:var(--text);">${a.short}</span><span style="display:flex; gap:8px; align-items:center;"><div class="star-component static" style="--fill: ${fillPct}%;"><div class="stars-spacer">★★★★★</div><div class="stars-bg">★★★★★</div><div class="stars-fill">★★★★★</div></div></span></div>`, val: val5 };
+            return { html: `<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px; font-size:14px;"><span style="display:flex; align-items:center; color:var(--text);"><div class="map-icon ${a.key}" style="transform:scale(0.8); margin-right:4px;"></div>${a.short}</span><span style="display:flex; gap:8px; align-items:center;"><div class="star-component static" style="--fill: ${fillPct}%;"><div class="stars-spacer">★★★★★</div><div class="stars-bg">★★★★★</div><div class="stars-fill">★★★★★</div></div></span></div>`, val: val5 };
           }).sort((a,b) => b.val - a.val).map(x => x.html).join('');
           
           let mapPoolBlock = `<div style="background:var(--bg-elevated); border:1px solid var(--border); border-radius:var(--radius); padding:16px;"><div style="color:var(--text-sec); font-size:12px; text-transform:uppercase; font-weight:700; margin-bottom:12px;">🗺️ Map Pool</div>${mapRows}${bestMap ? `<div style="margin-top:12px; padding-top:12px; border-top:1px dashed var(--border); color:var(--accent); font-weight:700; font-size:13px; text-transform:uppercase;">🏆 Melhor Mapa: ${bestMap.short} — ${bestMapVal.toFixed(1)}/5</div>` : ''}</div></div>`;
@@ -1463,7 +1464,9 @@ function startEvalWizard() {
       evalState.ratings[p.id][a.key] = existing && existing[a.key] !== undefined ? existing[a.key] : 0;
     });
     MAP_POOL.forEach(a => {
-      evalState.ratings[p.id][a.key] = existing && existing[a.key] !== undefined ? existing[a.key] : 0;
+      let val = existing && existing[a.key] !== undefined ? existing[a.key] : 0;
+      if (val > 5) val = 0;
+      evalState.ratings[p.id][a.key] = val;
     });
   });
 
@@ -1526,7 +1529,7 @@ function renderEvalStep() {
       return `
         <div class="attr-row" style="align-items:center; display:flex; justify-content:space-between; padding: 12px 16px;">
           <div class="attr-top" style="margin-bottom:0; width:auto;">
-            <span class="attr-icon">🗺️</span>
+            <div class="map-icon ${a.key}"></div>
             <span class="attr-lbl">${a.short}</span>
           </div>
           <div class="star-component" id="stars-${player.id}-${a.key}" style="--fill: ${(v / 5) * 100}%;">

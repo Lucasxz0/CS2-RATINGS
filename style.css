@@ -3187,6 +3187,8 @@ input[type="range"]::-webkit-slider-thumb:hover {
   top: 0;
   left: 0;
   pointer-events: none;
+  color: rgba(255,255,255,0.1);
+  -webkit-text-stroke: 1px #888;
 }
 .star-component .stars-fill {
   position: absolute;
@@ -3216,3 +3218,25 @@ input[type="range"]::-webkit-slider-thumb:hover {
   visibility: hidden;
   white-space: nowrap;
 }
+
+/* Map Icons */
+.map-icon {
+  width: 32px;
+  height: 32px;
+  background-size: cover;
+  background-position: center;
+  display: inline-block;
+  vertical-align: middle;
+  border-radius: 4px;
+  margin-right: 8px;
+}
+.map-icon.dust2 { background-image: url('https://raw.githubusercontent.com/MurkyYT/cs2-map-icons/main/images/de_dust2.png'); }
+.map-icon.mirage { background-image: url('https://raw.githubusercontent.com/MurkyYT/cs2-map-icons/main/images/de_mirage.png'); }
+.map-icon.inferno { background-image: url('https://raw.githubusercontent.com/MurkyYT/cs2-map-icons/main/images/de_inferno.png'); }
+.map-icon.ancient { background-image: url('https://raw.githubusercontent.com/MurkyYT/cs2-map-icons/main/images/de_ancient.png'); }
+.map-icon.nuke { background-image: url('https://raw.githubusercontent.com/MurkyYT/cs2-map-icons/main/images/de_nuke.png'); }
+.map-icon.train { background-image: url('https://raw.githubusercontent.com/MurkyYT/cs2-map-icons/main/images/de_train.png'); }
+.map-icon.overpass { background-image: url('https://raw.githubusercontent.com/MurkyYT/cs2-map-icons/main/images/de_overpass.png'); }
+.map-icon.anubis { background-image: url('https://raw.githubusercontent.com/MurkyYT/cs2-map-icons/main/images/de_anubis.png'); }
+.map-icon.vertigo { background-image: url('https://raw.githubusercontent.com/MurkyYT/cs2-map-icons/main/images/de_vertigo.png'); }
+.map-icon.cache { background-image: url('https://raw.githubusercontent.com/MurkyYT/cs2-map-icons/main/images/de_cache.png'); }
