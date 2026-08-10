@@ -179,7 +179,17 @@ function avgAttrs(evals) {
   const sum = {}; 
   [...ATTRS, ...ARSENAL_ATTRS, ...MAP_POOL].forEach(a => sum[a.key] = 0);
   evals.forEach(e => {
-    [...ATTRS, ...ARSENAL_ATTRS, ...MAP_POOL].forEach(a => sum[a.key] += (e[a.key] || 0));
+    ATTRS.forEach(a => sum[a.key] += (e[a.key] || 0));
+    ARSENAL_ATTRS.forEach(a => {
+      let val = e[a.key] || 0;
+      if (val > 5) val = val / 20; // Normaliza legado 0-100 para 0-5
+      sum[a.key] += val;
+    });
+    MAP_POOL.forEach(a => {
+      let val = e[a.key] || 0;
+      if (val > 5) val = val / 20; // Normaliza legado 0-100 para 0-5
+      sum[a.key] += val;
+    });
   });
   const avg = {}; 
   ATTRS.forEach(a => avg[a.key] = Math.round(sum[a.key] / evals.length));
