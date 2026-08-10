@@ -1006,7 +1006,9 @@ async function fetchAllData() {
     }));
 
     globalState.evaluations = (evalsRes.data || []).map(e => {
-      MAP_POOL.forEach(m => { if (e[m.key] > 5) e[m.key] = 0; });
+      [...ARSENAL_ATTRS, ...MAP_POOL].forEach(m => { 
+        if (e[m.key] > 5) e[m.key] = Math.round((e[m.key] / 20) * 2) / 2; 
+      });
       return {
         ...e,
         evaluatorId: getPlayerKeyByAuthId(e.evaluator_id),
@@ -1465,11 +1467,13 @@ function startEvalWizard() {
       evalState.ratings[p.id][a.key] = existing && existing[a.key] !== undefined ? existing[a.key] : 50;
     });
     ARSENAL_ATTRS.forEach(a => {
-      evalState.ratings[p.id][a.key] = existing && existing[a.key] !== undefined ? existing[a.key] : 0;
+      let val = existing && existing[a.key] !== undefined ? existing[a.key] : 0;
+      if (val > 5) val = Math.round((val / 20) * 2) / 2;
+      evalState.ratings[p.id][a.key] = val;
     });
     MAP_POOL.forEach(a => {
       let val = existing && existing[a.key] !== undefined ? existing[a.key] : 0;
-      if (val > 5) val = 0;
+      if (val > 5) val = Math.round((val / 20) * 2) / 2;
       evalState.ratings[p.id][a.key] = val;
     });
   });
