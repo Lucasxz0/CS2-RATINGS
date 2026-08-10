@@ -1454,6 +1454,13 @@ let evalState = { step: 1, players: [], ratings: {}, mataMata: {} };
 
 function startEvalWizard() {
   if (!loggedInPlayerId) { toast('Aguarde carregar dados...', 'err'); return; }
+  
+  if (Object.keys(evalState.ratings).length > 0) {
+    nav('eval-view');
+    renderEvalStep();
+    return;
+  }
+
   evalState = { step: 1, players: globalState.players.filter(p => p.id !== loggedInPlayerId), ratings: {}, mataMata: {} };
 
   // Pré-carrega avaliações anteriores se existirem (para permitir edição)
@@ -1617,6 +1624,7 @@ async function submitEvaluation() {
 
     await fetchAllData();
     toast('Avaliação salva! 🏆', 'ok');
+    evalState = { step: 1, players: [], ratings: {}, mataMata: {} };
     nav('colecao');
   } catch (e) {
     console.error(e);
