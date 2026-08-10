@@ -464,6 +464,18 @@
     </div>
   </div>
 
+  <!-- Update Password Modal -->
+  <div class="overlay" id="modal-update-password" style="z-index: 9999;">
+    <div class="modal-box" style="max-width:380px">
+      <div class="modal-title">🔑 Redefinir Senha</div>
+      <div class="modal-sub">Digite sua nova senha abaixo para acessar a conta.</div>
+      <input type="password" id="up-password" class="input-box" placeholder="Nova senha (mínimo 6 caracteres)" autocomplete="new-password" />
+      <div class="modal-actions" style="margin-top: 22px;">
+        <button class="btn btn-gold btn-block" id="btn-update-password" onclick="submitUpdatePassword()">Salvar Nova Senha</button>
+      </div>
+    </div>
+  </div>
+
   <main id="main-content" style="display:none">
 
     <!-- ===== CARTINHAS (COLEÇÃO) ===== -->

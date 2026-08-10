@@ -373,6 +373,30 @@ async function handleForgotPassword() {
   toast('Enviamos um link de recuperação para o seu e-mail! 📧', 'ok');
 }
 
+async function submitUpdatePassword() {
+  const newPw = document.getElementById('up-password').value;
+  if (!newPw || newPw.length < 6) {
+    shakeInput('up-password');
+    return toast('A senha deve ter pelo menos 6 caracteres.', 'err');
+  }
+
+  const btn = document.getElementById('btn-update-password');
+  btn.disabled = true;
+  btn.innerText = 'Salvando...';
+
+  const { error } = await sbClient.auth.updateUser({ password: newPw });
+  if (error) {
+    btn.disabled = false;
+    btn.innerText = 'Salvar Nova Senha';
+    return toast('Erro ao atualizar senha: ' + translateAuthError(error.message), 'err');
+  }
+
+  toast('Senha atualizada com sucesso! 🔑', 'ok');
+  closeModal('modal-update-password');
+  btn.disabled = false;
+  btn.innerText = 'Salvar Nova Senha';
+}
+
 async function handleRegister() {
   const email = document.getElementById('reg-email').value.trim();
   const pass = document.getElementById('reg-password').value;
@@ -447,6 +471,9 @@ async function init() {
   await handleAuthChange(session);
 
   sbClient.auth.onAuthStateChange(async (_event, session) => {
+    if (_event === 'PASSWORD_RECOVERY') {
+      openModal('modal-update-password');
+    }
     await handleAuthChange(session);
   });
 }
