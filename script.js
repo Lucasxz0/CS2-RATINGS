@@ -155,8 +155,8 @@ function calcBaseOverall(attrs, role) {
   let arsenalWeight = 0;
   let mapWeight = 0;
   
-  if (arsenalCount > 0) { baseWeight -= 0.10; arsenalWeight = 0.10; }
-  if (mapCount > 0) { baseWeight -= 0.10; mapWeight = 0.10; }
+  if (arsenalCount > 0) { baseWeight -= 0.05; arsenalWeight = 0.05; }
+  if (mapCount > 0) { baseWeight -= 0.05; mapWeight = 0.05; }
 
   return (baseScore * baseWeight) + (arsenalAvg * arsenalWeight) + (mapAvg * mapWeight);
 }
