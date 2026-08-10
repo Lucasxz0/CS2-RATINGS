@@ -1461,6 +1461,21 @@ function startEvalWizard() {
     return;
   }
 
+  const draftKey = `evalDraft_${currentUser.id}_${currentTeam.id}`;
+  const draft = localStorage.getItem(draftKey);
+  if (draft) {
+    try {
+      const parsed = JSON.parse(draft);
+      if (parsed && parsed.players && parsed.players.length > 0) {
+        evalState = parsed;
+        toast('Retomando rascunho salvo...', 'inf');
+        nav('eval-view');
+        renderEvalStep();
+        return;
+      }
+    } catch(e) {}
+  }
+
   evalState = { step: 1, players: globalState.players.filter(p => p.id !== loggedInPlayerId), ratings: {}, mataMata: {} };
 
   // Pré-carrega avaliações anteriores se existirem (para permitir edição)
@@ -1493,6 +1508,7 @@ function startEvalWizard() {
 }
 
 function renderEvalStep() {
+  saveEvalDraft();
   const ev = document.getElementById('eval-view');
   const totalSteps = evalState.players.length + 1;
   if (evalState.step > evalState.players.length) { renderMataMataStep(totalSteps); return; }
@@ -1571,12 +1587,14 @@ function onStarClick(pId, k, index) {
   }
 
   evalState.ratings[pId][k] = newVal;
+  saveEvalDraft();
   const container = document.getElementById('stars-' + pId + '-' + k);
   if (container) container.style.setProperty('--fill', (newVal / 5) * 100 + '%');
 }
 function onSlider(pId, k) {
   const v = parseInt(document.getElementById('sl-' + k).value);
   evalState.ratings[pId][k] = v; document.getElementById('av-' + k).textContent = v; updateSliderBg(k, v);
+  saveEvalDraft();
   const player = globalState.players.find(p => p.id === pId);
   document.getElementById('live-ovr').textContent = Math.round(calcBaseOverall(evalState.ratings[pId], player?.role));
 }
@@ -1587,6 +1605,7 @@ function adjustSlider(pId, k, delta) {
   evalState.ratings[pId][k] = newVal;
   document.getElementById('av-' + k).textContent = newVal;
   updateSliderBg(k, newVal);
+  saveEvalDraft();
   const player = globalState.players.find(p => p.id === pId);
   document.getElementById('live-ovr').textContent = Math.round(calcBaseOverall(evalState.ratings[pId], player?.role));
 }
@@ -1594,8 +1613,9 @@ function updateSliderBg(k, v) { const pct = (v / 99) * 100; document.getElementB
 
 function renderMataMataStep(totalSteps) {
   const ev = document.getElementById('eval-view');
+  saveEvalDraft();
   const dots = Array.from({ length: totalSteps }, (_, i) => `<div class="step-dot ${i < totalSteps - 1 ? 'done' : 'current'}"></div>`).join('');
-  const qHtml = MM_QUESTIONS.map(q => `<div class="mm-question"><div class="mm-q-label"><span class="mm-q-emoji">${q.emoji}</span> ${esc(q.q)}</div><div class="mm-options">${globalState.players.map(p => `<div class="mm-option"><input type="radio" name="mm-${q.id}" id="mm-${q.id}-${p.id}" ${evalState.mataMata[q.id] === p.id ? 'checked' : ''} onchange="evalState.mataMata['${q.id}']='${p.id}'" /><label for="mm-${q.id}-${p.id}">${esc(p.name)}</label></div>`).join('')}</div></div>`).join('');
+  const qHtml = MM_QUESTIONS.map(q => `<div class="mm-question"><div class="mm-q-label"><span class="mm-q-emoji">${q.emoji}</span> ${esc(q.q)}</div><div class="mm-options">${globalState.players.map(p => `<div class="mm-option"><input type="radio" name="mm-${q.id}" id="mm-${q.id}-${p.id}" ${evalState.mataMata[q.id] === p.id ? 'checked' : ''} onchange="evalState.mataMata['${q.id}']='${p.id}'; saveEvalDraft();" /><label for="mm-${q.id}-${p.id}">${esc(p.name)}</label></div>`).join('')}</div></div>`).join('');
   ev.innerHTML = `<div class="step-progress">${dots}<span class="step-label">MATA-MATA</span></div><div class="panel"><div class="mm-section-title">⚔️ Perguntas Diretas</div>${qHtml}<div style="margin-top:24px;display:flex;gap:12px"><button class="btn btn-gold" onclick="submitEvaluation()" id="btn-submit-eval">🏆 Enviar Avaliação</button><button class="btn btn-ghost" onclick="evalState.step--;renderEvalStep()">← Voltar</button></div></div>`;
 }
 
@@ -1623,6 +1643,7 @@ async function submitEvaluation() {
     await sbClient.from('mata_mata_votes').insert({ evaluator_id: currentUser.id, team_id: currentTeam.id, votes: evalState.mataMata });
 
     await fetchAllData();
+    clearEvalDraft();
     toast('Avaliação salva! 🏆', 'ok');
     evalState = { step: 1, players: [], ratings: {}, mataMata: {} };
     nav('colecao');
@@ -1971,6 +1992,18 @@ document.addEventListener('DOMContentLoaded', () => {
   initPwListener();
   init();
 });
+
+function saveEvalDraft() {
+  if (!currentTeam || !currentUser || !evalState || !evalState.players || evalState.players.length === 0) return;
+  const draftKey = `evalDraft_${currentUser.id}_${currentTeam.id}`;
+  localStorage.setItem(draftKey, JSON.stringify(evalState));
+}
+
+function clearEvalDraft() {
+  if (!currentTeam || !currentUser) return;
+  const draftKey = `evalDraft_${currentUser.id}_${currentTeam.id}`;
+  localStorage.removeItem(draftKey);
+}
 
 
 
