@@ -1991,19 +1991,20 @@ document.addEventListener('DOMContentLoaded', () => {
   initParticles();
   initPwListener();
   init();
+
+  function saveEvalDraft() {
+    if (!currentTeam || !currentUser || !evalState || !evalState.players || evalState.players.length === 0) return;
+    const draftKey = `evalDraft_${currentUser.id}_${currentTeam.id}`;
+    localStorage.setItem(draftKey, JSON.stringify(evalState));
+  }
+
+  function clearEvalDraft() {
+    if (!currentTeam || !currentUser) return;
+    const draftKey = `evalDraft_${currentUser.id}_${currentTeam.id}`;
+    localStorage.removeItem(draftKey);
+  }
+
 });
-
-function saveEvalDraft() {
-  if (!currentTeam || !currentUser || !evalState || !evalState.players || evalState.players.length === 0) return;
-  const draftKey = `evalDraft_${currentUser.id}_${currentTeam.id}`;
-  localStorage.setItem(draftKey, JSON.stringify(evalState));
-}
-
-function clearEvalDraft() {
-  if (!currentTeam || !currentUser) return;
-  const draftKey = `evalDraft_${currentUser.id}_${currentTeam.id}`;
-  localStorage.removeItem(draftKey);
-}
 
 
 
