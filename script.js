@@ -1456,7 +1456,6 @@ function startEvalWizard() {
   if (!loggedInPlayerId) { toast('Aguarde carregar dados...', 'err'); return; }
   
   if (Object.keys(evalState.ratings).length > 0) {
-    nav('eval-view');
     renderEvalStep();
     return;
   }
@@ -1469,7 +1468,6 @@ function startEvalWizard() {
       if (parsed && parsed.players && parsed.players.length > 0) {
         evalState = parsed;
         toast('Retomando rascunho salvo...', 'inf');
-        nav('eval-view');
         renderEvalStep();
         return;
       }
