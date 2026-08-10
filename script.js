@@ -1001,7 +1001,8 @@ async function fetchAllData() {
       role: dbP.role,
       team: dbP.team,
       photo: dbP.photo,
-      card_color: dbP.card_color
+      card_color: dbP.card_color,
+      signature_weapon: dbP.signature_weapon
     }));
 
     globalState.evaluations = (evalsRes.data || []).map(e => {
@@ -1276,7 +1277,7 @@ function openDetailModal(playerId) {
             return `<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px; font-size:14px;"><span style="color:var(--text);">${a.short}</span><span style="display:flex; gap:8px; align-items:center;"><div class="star-component static" style="--fill: ${fillPct}%;"><div class="stars-spacer">★★★★★</div><div class="stars-bg">★★★★★</div><div class="stars-fill">★★★★★</div></div></span></div>`;
           }).join('');
           
-          let arsenalBlock = `<div style="margin-top:20px; padding-top:16px; border-top:1px solid rgba(255,255,255,0.05)"><div style="font-size:12px; color:var(--text-sec); margin-bottom:10px; font-weight:700; text-transform:uppercase; letter-spacing:1px;">Perfil de Jogo</div><div style="background:var(--bg-elevated); border:1px solid var(--border); border-radius:var(--radius); padding:16px; margin-bottom:12px;"><div style="color:var(--text-sec); font-size:12px; text-transform:uppercase; font-weight:700; margin-bottom:12px;">🔫 Arsenal</div>${arsenalRows}${bestArsenal ? `<div style="margin-top:12px; padding-top:12px; border-top:1px dashed var(--border); color:var(--accent); font-weight:700; font-size:13px; text-transform:uppercase;">🔫 Especialidade: ${bestArsenal.short} — ${bestArsenalVal.toFixed(1)}/5</div>` : ''}${player.signature_weapon ? `<div style="margin-top:8px; color:var(--text); font-weight:600; font-size:13px;">⭐ Arma assinatura: <span style="color:var(--accent);">${esc(player.signature_weapon)}</span></div>` : ''}</div>`;
+          let arsenalBlock = `<div style="margin-top:20px; padding-top:16px; border-top:1px solid rgba(255,255,255,0.05)"><div style="font-size:12px; color:var(--text-sec); margin-bottom:10px; font-weight:700; text-transform:uppercase; letter-spacing:1px;">Perfil de Jogo</div><div style="background:var(--bg-elevated); border:1px solid var(--border); border-radius:var(--radius); padding:16px; margin-bottom:12px;"><div style="color:var(--text-sec); font-size:12px; text-transform:uppercase; font-weight:700; margin-bottom:12px;">🔫 Arsenal</div>${arsenalRows}${bestArsenal ? `<div style="margin-top:12px; padding-top:12px; border-top:1px dashed var(--border); color:var(--accent); font-weight:700; font-size:13px; text-transform:uppercase;">🔫 Especialidade: ${bestArsenal.short} — ${bestArsenalVal.toFixed(1)}/5</div>` : ''}${player.signature_weapon ? `<div style="margin-top:8px; color:var(--text); font-weight:600; font-size:13px;">⭐ Arma Preferida: <span style="color:var(--accent);">${esc(player.signature_weapon)}</span></div>` : ''}</div>`;
 
           let bestMap = null; let bestMapVal = -1;
           const mapRows = MAP_POOL.map(a => {
