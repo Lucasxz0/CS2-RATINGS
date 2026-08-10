@@ -11,6 +11,29 @@ let sbClient; // inicializado no DOMContentLoaded
 // criadas automaticamente quando alguém entra no time (ver create_player_card
 // e claim_player_card no script.js e na migração team_scoped_data_migration.sql).
 
+const ARSENAL_ATTRS = [
+  { key: 'rifles', icon: '🔫', short: 'Rifles' },
+  { key: 'precisao', icon: '🎯', short: 'Precisão' },
+  { key: 'smgs', icon: '💨', short: 'SMGs' },
+  { key: 'pistolas', icon: '🔫', short: 'Pistolas' },
+  { key: 'utilitarias', icon: '💣', short: 'Utilitárias' }
+];
+
+const MAP_POOL = [
+  { key: 'mirage', short: 'Mirage' },
+  { key: 'inferno', short: 'Inferno' },
+  { key: 'dust2', short: 'Dust II' },
+  { key: 'nuke', short: 'Nuke' },
+  { key: 'ancient', short: 'Ancient' },
+  { key: 'cache', short: 'Cache' },
+  { key: 'overpass', short: 'Overpass' }
+];
+
+const CS2_WEAPONS = [
+  "AK-47", "M4A4", "M4A1-S", "AWP", "Desert Eagle", "USP-S", "Glock-18",
+  "MAC-10", "MP9", "Galil AR", "FAMAS", "SSG 08", "P250", "Tec-9", "Five-SeveN"
+];
+
 const ATTRS = [
   { key: 'aim', icon: '🎯', short: 'AIM', full: 'AIM', desc: 'Capacidade de ganhar trocação' },
   { key: 'reflexo', icon: '⚡', short: 'REFLEXO', full: 'REFLEXO', desc: 'Velocidade de reação' },
@@ -143,9 +166,15 @@ function getTier(ov) { return ov >= 90 ? 'fenomeno' : ov >= 80 ? 'excelente' : o
 function getTierLabel(t) { return { fenomeno: 'Fenômeno', excelente: 'Excelente', muitobom: 'Muito Bom', bom: 'Bom', treino: 'Treino' }[t]; }
 function avgAttrs(evals) {
   if (!evals.length) return null;
-  const sum = {}; ATTRS.forEach(a => sum[a.key] = 0);
-  evals.forEach(e => ATTRS.forEach(a => sum[a.key] += (e[a.key] || 0)));
-  const avg = {}; ATTRS.forEach(a => avg[a.key] = Math.round(sum[a.key] / evals.length));
+  const sum = {}; 
+  [...ATTRS, ...ARSENAL_ATTRS, ...MAP_POOL].forEach(a => sum[a.key] = 0);
+  evals.forEach(e => {
+    [...ATTRS, ...ARSENAL_ATTRS, ...MAP_POOL].forEach(a => sum[a.key] += (e[a.key] || 0));
+  });
+  const avg = {}; 
+  ATTRS.forEach(a => avg[a.key] = Math.round(sum[a.key] / evals.length));
+  ARSENAL_ATTRS.forEach(a => avg[a.key] = parseFloat((sum[a.key] / evals.length).toFixed(1)));
+  MAP_POOL.forEach(a => avg[a.key] = parseFloat((sum[a.key] / evals.length).toFixed(1)));
   return avg;
 }
 function initials(name) { return name ? name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2) : '??'; }
@@ -1143,7 +1172,7 @@ function openDetailModal(playerId) {
   const overall = avg ? calcFinalOverall(avg, player) : null;
   const tier = avg ? getTier(overall) : null;
 
-  let tableRows = evals.map(ev => `<tr><td>${esc(globalState.players.find(p => p.id === ev.evaluatorId)?.name || ev.evaluatorId)}</td>${ATTRS.map(a => `<td class="vm">${ev[a.key] ?? '—'}</td>`).join('')}<td class="vm" style="font-size:15px">${calcBaseOverall(ev, player.role)}</td></tr>`).join('');
+  let tableRows = evals.map(ev => `<tr><td>${esc(globalState.players.find(p => p.id === ev.evaluatorId)?.name || ev.evaluatorId)}</td>${ATTRS.map(a => `<td class="vm">${ev[a.key] ?? '—'}</td>`).join('')}<td class="vm" style="font-size:15px">${Math.round(calcBaseOverall(ev, player.role))}</td></tr>`).join('');
   let avgRow = avg ? `<tr style="background:rgba(255,184,0,0.08)"><td style="font-weight:700;color:var(--accent)">MÉDIA</td>${ATTRS.map(a => `<td class="vm" style="color:var(--accent)">${avg[a.key]}</td>`).join('')}<td class="vm" style="color:var(--accent);font-size:15px">${overall}</td></tr>` : '';
 
   let colorPicker = '';
@@ -1178,7 +1207,11 @@ function openDetailModal(playerId) {
       <div style="display:flex; flex-direction:column; gap:8px; max-width:260px">
         <input type="text" id="edit-name-${playerId}" class="input-box" value="${esc(player.name)}" maxlength="30" placeholder="Nome" style="margin-bottom:0" />
         <input type="text" id="edit-apelido-${playerId}" class="input-box" value="${esc(player.apelido || '')}" maxlength="30" placeholder="Apelido" style="margin-bottom:0" />
-        <button class="btn btn-dark btn-sm" style="margin:0" onclick="saveNameApelido('${playerId}')">💾 Salvar nome/apelido</button>
+        <select id="edit-signature-${playerId}" class="input-box" style="margin-bottom:0; background:var(--bg-elevated); color:var(--text); border:1px solid var(--border)">
+          <option value="">Arma Assinatura (Nenhuma)</option>
+          ${CS2_WEAPONS.map(w => `<option value="${esc(w)}" ${player.signature_weapon === w ? 'selected' : ''}>${esc(w)}</option>`).join('')}
+        </select>
+        <button class="btn btn-dark btn-sm" style="margin:0" onclick="saveNameApelido('${playerId}')">💾 Salvar Perfil</button>
       </div>
     </div>`;
     const colors = [
@@ -1229,6 +1262,31 @@ function openDetailModal(playerId) {
           <label for="file-photo-${playerId}" class="btn btn-dark btn-sm" style="margin:0;cursor:pointer">📸 Trocar foto</label>
         </div>
         ${playstylesBlock}
+        ${(function() {
+          if (!avg) return '';
+          let bestArsenal = null; let bestArsenalVal = -1;
+          ARSENAL_ATTRS.forEach(a => { if (avg[a.key] > bestArsenalVal) { bestArsenalVal = avg[a.key]; bestArsenal = a; } });
+          
+          const arsenalRows = ARSENAL_ATTRS.map(a => {
+            let starsHtml = '';
+            for (let i = 1; i <= 5; i++) { starsHtml += `<span class="star-rating static ${i <= Math.round(avg[a.key]) ? 'active' : ''}">★</span>`; }
+            return `<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px; font-size:14px;"><span style="color:var(--text);">${a.short}</span><span style="display:flex; gap:8px; align-items:center;"><div class="stars-container static">${starsHtml}</div><span style="color:var(--accent); font-weight:700; width:24px; text-align:right;">${avg[a.key].toFixed(1)}</span></span></div>`;
+          }).join('');
+          
+          let arsenalBlock = `<div style="margin-top:20px; padding-top:16px; border-top:1px solid rgba(255,255,255,0.05)"><div style="font-size:12px; color:var(--text-sec); margin-bottom:10px; font-weight:700; text-transform:uppercase; letter-spacing:1px;">Perfil de Jogo</div><div style="background:var(--bg-elevated); border:1px solid var(--border); border-radius:var(--radius); padding:16px; margin-bottom:12px;"><div style="color:var(--text-sec); font-size:12px; text-transform:uppercase; font-weight:700; margin-bottom:12px;">🔫 Arsenal</div>${arsenalRows}${bestArsenal ? `<div style="margin-top:12px; padding-top:12px; border-top:1px dashed var(--border); color:var(--accent); font-weight:700; font-size:13px; text-transform:uppercase;">🔫 Especialidade: ${bestArsenal.short} — ${bestArsenalVal.toFixed(1)}/5</div>` : ''}${player.signature_weapon ? `<div style="margin-top:8px; color:var(--text); font-weight:600; font-size:13px;">⭐ Arma assinatura: <span style="color:var(--accent);">${esc(player.signature_weapon)}</span></div>` : ''}</div>`;
+
+          let bestMap = null; let bestMapVal = -1;
+          const mapRows = MAP_POOL.map(a => {
+            const val5 = avg[a.key] || 0;
+            if (val5 > bestMapVal) { bestMapVal = val5; bestMap = a; }
+            let starsHtml = '';
+            for (let i = 1; i <= 5; i++) { starsHtml += `<span class="star-rating static ${i <= Math.round(val5) ? 'active' : ''}">★</span>`; }
+            return { html: `<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px; font-size:14px;"><span style="color:var(--text);">${a.short}</span><span style="display:flex; gap:8px; align-items:center;"><div class="stars-container static">${starsHtml}</div><span style="color:var(--accent); font-weight:700; width:24px; text-align:right;">${val5.toFixed(1)}</span></span></div>`, val: val5 };
+          }).sort((a,b) => b.val - a.val).map(x => x.html).join('');
+          
+          let mapPoolBlock = `<div style="background:var(--bg-elevated); border:1px solid var(--border); border-radius:var(--radius); padding:16px;"><div style="color:var(--text-sec); font-size:12px; text-transform:uppercase; font-weight:700; margin-bottom:12px;">🗺️ Map Pool</div>${mapRows}${bestMap ? `<div style="margin-top:12px; padding-top:12px; border-top:1px dashed var(--border); color:var(--accent); font-weight:700; font-size:13px; text-transform:uppercase;">🏆 Melhor Mapa: ${bestMap.short} — ${bestMapVal.toFixed(1)}/5</div>` : ''}</div></div>`;
+          return arsenalBlock + mapPoolBlock;
+        })()}
         ${colorPicker}
         ${rolePicker}
         ${nameEditor}
@@ -1297,16 +1355,18 @@ async function saveNameApelido(playerId) {
   if (!p) return;
   const nameInput = document.getElementById('edit-name-' + playerId);
   const apelidoInput = document.getElementById('edit-apelido-' + playerId);
+  const sigInput = document.getElementById('edit-signature-' + playerId);
   const newName = nameInput.value.trim();
   const newApelido = apelidoInput.value.trim();
+  const newSig = sigInput ? sigInput.value : p.signature_weapon;
 
   if (!newName) { shakeInput('edit-name-' + playerId); return toast('O nome não pode ficar em branco!', 'err'); }
 
-  p.name = newName; p.apelido = newApelido;
+  p.name = newName; p.apelido = newApelido; p.signature_weapon = newSig;
   renderCollection(); openDetailModal(playerId); updateHeader();
 
   try {
-    const { error } = await sbClient.from('players').update({ name: newName, apelido: newApelido }).eq('id', p.db_id);
+    const { error } = await sbClient.from('players').update({ name: newName, apelido: newApelido, signature_weapon: newSig }).eq('id', p.db_id);
     if (error) { console.error(error); toast('Nome/apelido não salvo.', 'err'); }
     else toast('Cartinha atualizada!', 'ok');
   } catch (err) { console.error(err); }
@@ -1401,6 +1461,12 @@ function startEvalWizard() {
     ATTRS.forEach(a => {
       evalState.ratings[p.id][a.key] = existing && existing[a.key] !== undefined ? existing[a.key] : 50;
     });
+    ARSENAL_ATTRS.forEach(a => {
+      evalState.ratings[p.id][a.key] = existing && existing[a.key] !== undefined ? existing[a.key] : 0;
+    });
+    MAP_POOL.forEach(a => {
+      evalState.ratings[p.id][a.key] = existing && existing[a.key] !== undefined ? existing[a.key] : 0;
+    });
   });
 
   if (myMM && myMM.votes) {
@@ -1437,14 +1503,60 @@ function renderEvalStep() {
       </div>
     </div>
   `).join('');
-  ev.innerHTML = `<div class="step-progress">${dots}<span class="step-label">PASSO ${stepN} DE ${totalSteps}</span></div><div class="wizard-header"><div class="wizard-avatar">${player.photo ? `<img src="${esc(player.photo)}">` : initials(player.name)}</div><div class="wizard-info"><div class="wizard-name">${esc(player.name)}</div><div class="wizard-sub">"${esc(player.apelido)}"</div></div><div class="live-ovr-wrap"><div class="live-ovr-lbl">Base OVR</div><div class="live-ovr-num" id="live-ovr">${calcBaseOverall(ratings, player.role)}</div></div></div><div class="panel"><div class="panel-label">Avalie: ${esc(player.name)}</div>${attrRows}<div style="margin-top:20px;display:flex;gap:12px">${stepN > 1 ? `<button class="btn btn-ghost" onclick="evalState.step--;renderEvalStep()">← Voltar</button>` : ''}<button class="btn btn-gold" onclick="evalState.step++;renderEvalStep()">${stepN < totalSteps ? 'Próximo →' : 'Mata-Mata →'}</button></div></div>`;
-  ATTRS.forEach(a => updateSliderBg(a.key, ratings[a.key]));
+    const arsenalRows = ARSENAL_ATTRS.map(a => {
+      const v = ratings[a.key] || 0;
+      let starsHtml = '';
+      for (let i = 1; i <= 5; i++) {
+        starsHtml += `<span class="star-rating ${i <= v ? 'active' : ''}" onclick="onStarClick('${player.id}','${a.key}',${i})">★</span>`;
+      }
+      return `
+        <div class="attr-row" style="align-items:center; display:flex; justify-content:space-between; padding: 12px 16px;">
+          <div class="attr-top" style="margin-bottom:0; width:auto;">
+            <span class="attr-icon">${a.icon}</span>
+            <span class="attr-lbl">${a.short}</span>
+          </div>
+          <div class="stars-container" id="stars-${player.id}-${a.key}">
+            ${starsHtml}
+          </div>
+        </div>
+      `;
+    }).join('');
+
+    const mapRows = MAP_POOL.map(a => {
+      const v = ratings[a.key] || 0;
+      let starsHtml = '';
+      for (let i = 1; i <= 5; i++) {
+        starsHtml += `<span class="star-rating ${i <= v ? 'active' : ''}" onclick="onStarClick('${player.id}','${a.key}',${i})">★</span>`;
+      }
+      return `
+        <div class="attr-row" style="align-items:center; display:flex; justify-content:space-between; padding: 12px 16px;">
+          <div class="attr-top" style="margin-bottom:0; width:auto;">
+            <span class="attr-icon">🗺️</span>
+            <span class="attr-lbl">${a.short}</span>
+          </div>
+          <div class="stars-container" id="stars-${player.id}-${a.key}">
+            ${starsHtml}
+          </div>
+        </div>
+      `;
+    }).join('');
+
+    ev.innerHTML = `<div class="step-progress">${dots}<span class="step-label">PASSO ${stepN} DE ${totalSteps}</span></div><div class="wizard-header"><div class="wizard-avatar">${player.photo ? `<img src="${esc(player.photo)}">` : initials(player.name)}</div><div class="wizard-info"><div class="wizard-name">${esc(player.name)}</div><div class="wizard-sub">"${esc(player.apelido)}"</div></div><div class="live-ovr-wrap"><div class="live-ovr-lbl">Base OVR</div><div class="live-ovr-num" id="live-ovr">${Math.round(calcBaseOverall(ratings, player.role))}</div></div></div><div class="panel"><div class="panel-label">Avalie: ${esc(player.name)}</div>${attrRows}<div class="panel-label" style="margin-top:24px;">🔫 Arsenal</div><div class="panel-sub" style="font-size:12px;color:var(--text-sec);margin-bottom:12px;">Avalie a habilidade (1 a 5 estrelas)</div>${arsenalRows}<div class="panel-label" style="margin-top:24px;">🗺️ Map Pool</div><div class="panel-sub" style="font-size:12px;color:var(--text-sec);margin-bottom:12px;">Avalie o conhecimento de cada mapa (1 a 5 estrelas)</div>${mapRows}<div style="margin-top:20px;display:flex;gap:12px">${stepN > 1 ? `<button class="btn btn-ghost" onclick="evalState.step--;renderEvalStep()">← Voltar</button>` : ''}<button class="btn btn-gold" onclick="evalState.step++;renderEvalStep()">${stepN < totalSteps ? 'Próximo →' : 'Mata-Mata →'}</button></div></div>`;
+    ATTRS.forEach(a => updateSliderBg(a.key, ratings[a.key]));
+}
+function onStarClick(pId, k, v) {
+  evalState.ratings[pId][k] = v;
+  let starsHtml = '';
+  for (let i = 1; i <= 5; i++) {
+    starsHtml += `<span class="star-rating ${i <= v ? 'active' : ''}" onclick="onStarClick('${pId}','${k}',${i})">★</span>`;
+  }
+  document.getElementById('stars-' + pId + '-' + k).innerHTML = starsHtml;
 }
 function onSlider(pId, k) {
   const v = parseInt(document.getElementById('sl-' + k).value);
   evalState.ratings[pId][k] = v; document.getElementById('av-' + k).textContent = v; updateSliderBg(k, v);
   const player = globalState.players.find(p => p.id === pId);
-  document.getElementById('live-ovr').textContent = calcBaseOverall(evalState.ratings[pId], player?.role);
+  document.getElementById('live-ovr').textContent = Math.round(calcBaseOverall(evalState.ratings[pId], player?.role));
 }
 function adjustSlider(pId, k, delta) {
   const slider = document.getElementById('sl-' + k);
@@ -1454,7 +1566,7 @@ function adjustSlider(pId, k, delta) {
   document.getElementById('av-' + k).textContent = newVal;
   updateSliderBg(k, newVal);
   const player = globalState.players.find(p => p.id === pId);
-  document.getElementById('live-ovr').textContent = calcBaseOverall(evalState.ratings[pId], player?.role);
+  document.getElementById('live-ovr').textContent = Math.round(calcBaseOverall(evalState.ratings[pId], player?.role));
 }
 function updateSliderBg(k, v) { const pct = (v / 99) * 100; document.getElementById('sl-' + k).style.background = `linear-gradient(90deg, var(--accent) ${pct}%, var(--bg-elevated) ${pct}%)`; }
 

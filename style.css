@@ -3169,3 +3169,32 @@ input[type="range"]::-webkit-slider-thumb:hover {
   padding: 12px 0;
   font-weight: 700;
 }
+
+/* Arsenal Stars */
+.stars-container {
+  display: flex;
+  gap: 4px;
+}
+.star-rating {
+  font-size: 20px;
+  color: var(--border);
+  cursor: pointer;
+  transition: color 0.2s;
+  user-select: none;
+}
+.star-rating.active {
+  color: var(--accent);
+}
+.star-rating:hover {
+  color: #FFE066;
+}
+.stars-container.static .star-rating {
+  cursor: default;
+  font-size: 16px;
+}
+.stars-container.static .star-rating:hover {
+  color: inherit;
+}
+.stars-container.static .star-rating.active:hover {
+  color: var(--accent);
+}
