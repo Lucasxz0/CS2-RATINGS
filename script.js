@@ -467,12 +467,22 @@ async function logout() {
 
 // Inicialização e Listener de Auth
 async function init() {
+  const isRecovery = window.location.hash.includes('type=recovery');
+
   const { data: { session } } = await sbClient.auth.getSession();
   await handleAuthChange(session);
 
+  if (isRecovery) {
+    setTimeout(() => {
+      openModal('modal-update-password');
+    }, 800);
+  }
+
   sbClient.auth.onAuthStateChange(async (_event, session) => {
     if (_event === 'PASSWORD_RECOVERY') {
-      openModal('modal-update-password');
+      setTimeout(() => {
+        openModal('modal-update-password');
+      }, 800);
     }
     await handleAuthChange(session);
   });
