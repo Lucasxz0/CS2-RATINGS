@@ -176,25 +176,37 @@ function getTier(ov) { return ov >= 90 ? 'fenomeno' : ov >= 80 ? 'excelente' : o
 function getTierLabel(t) { return { fenomeno: 'Fenômeno', excelente: 'Excelente', muitobom: 'Muito Bom', bom: 'Bom', treino: 'Treino' }[t]; }
 function avgAttrs(evals) {
   if (!evals.length) return null;
-  const sum = {}; 
-  [...ATTRS, ...ARSENAL_ATTRS, ...MAP_POOL].forEach(a => sum[a.key] = 0);
+  const sum = {};
+  const counts = {};
+  [...ATTRS, ...ARSENAL_ATTRS, ...MAP_POOL].forEach(a => { sum[a.key] = 0; counts[a.key] = 0; });
+  
   evals.forEach(e => {
-    ATTRS.forEach(a => sum[a.key] += (e[a.key] || 0));
+    ATTRS.forEach(a => {
+      sum[a.key] += (e[a.key] || 0);
+      counts[a.key]++; // Sliders sempre contam
+    });
     ARSENAL_ATTRS.forEach(a => {
       let val = e[a.key] || 0;
       if (val > 5) val = val / 20; // Normaliza legado 0-100 para 0-5
-      sum[a.key] += val;
+      if (val > 0) { // S conta se a pessoa votou (maior que 0)
+        sum[a.key] += val;
+        counts[a.key]++;
+      }
     });
     MAP_POOL.forEach(a => {
       let val = e[a.key] || 0;
       if (val > 5) val = val / 20; // Normaliza legado 0-100 para 0-5
-      sum[a.key] += val;
+      if (val > 0) { // S conta se a pessoa votou (maior que 0)
+        sum[a.key] += val;
+        counts[a.key]++;
+      }
     });
   });
+
   const avg = {}; 
-  ATTRS.forEach(a => avg[a.key] = Math.round(sum[a.key] / evals.length));
-  ARSENAL_ATTRS.forEach(a => avg[a.key] = parseFloat((sum[a.key] / evals.length).toFixed(1)));
-  MAP_POOL.forEach(a => avg[a.key] = parseFloat((sum[a.key] / evals.length).toFixed(1)));
+  ATTRS.forEach(a => avg[a.key] = Math.round(sum[a.key] / Math.max(1, counts[a.key])));
+  ARSENAL_ATTRS.forEach(a => avg[a.key] = parseFloat((sum[a.key] / Math.max(1, counts[a.key])).toFixed(1)));
+  MAP_POOL.forEach(a => avg[a.key] = parseFloat((sum[a.key] / Math.max(1, counts[a.key])).toFixed(1)));
   return avg;
 }
 function initials(name) { return name ? name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2) : '??'; }
