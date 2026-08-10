@@ -1503,7 +1503,7 @@ function renderEvalStep() {
   `).join('');
     const arsenalRows = ARSENAL_ATTRS.map(a => {
       const v = ratings[a.key] || 0;
-      const hitZones = Array.from({length:10}, (_, i) => `<div class="hit-zone" onclick="onStarClick('${player.id}','${a.key}', ${(i+1)*0.5})"></div>`).join('');
+      const hitZones = Array.from({length:5}, (_, i) => `<div class="hit-zone" onclick="onStarClick('${player.id}','${a.key}', ${i+1})"></div>`).join('');
       return `
         <div class="attr-row" style="align-items:center; display:flex; justify-content:space-between; padding: 12px 16px;">
           <div class="attr-top" style="margin-bottom:0; width:auto;">
@@ -1522,7 +1522,7 @@ function renderEvalStep() {
 
     const mapRows = MAP_POOL.map(a => {
       const v = ratings[a.key] || 0;
-      const hitZones = Array.from({length:10}, (_, i) => `<div class="hit-zone" onclick="onStarClick('${player.id}','${a.key}', ${(i+1)*0.5})"></div>`).join('');
+      const hitZones = Array.from({length:5}, (_, i) => `<div class="hit-zone" onclick="onStarClick('${player.id}','${a.key}', ${i+1})"></div>`).join('');
       return `
         <div class="attr-row" style="align-items:center; display:flex; justify-content:space-between; padding: 12px 16px;">
           <div class="attr-top" style="margin-bottom:0; width:auto;">
@@ -1542,10 +1542,19 @@ function renderEvalStep() {
     ev.innerHTML = `<div class="step-progress">${dots}<span class="step-label">PASSO ${stepN} DE ${totalSteps}</span></div><div class="wizard-header"><div class="wizard-avatar">${player.photo ? `<img src="${esc(player.photo)}">` : initials(player.name)}</div><div class="wizard-info"><div class="wizard-name">${esc(player.name)}</div><div class="wizard-sub">"${esc(player.apelido)}"</div></div><div class="live-ovr-wrap"><div class="live-ovr-lbl">Base OVR</div><div class="live-ovr-num" id="live-ovr">${Math.round(calcBaseOverall(ratings, player.role))}</div></div></div><div class="panel"><div class="panel-label">Avalie: ${esc(player.name)}</div>${attrRows}<div class="panel-label" style="margin-top:24px;">🔫 Arsenal</div><div class="panel-sub" style="font-size:12px;color:var(--text-sec);margin-bottom:12px;">Avalie a habilidade (1 a 5 estrelas)</div>${arsenalRows}<div class="panel-label" style="margin-top:24px;">🗺️ Map Pool</div><div class="panel-sub" style="font-size:12px;color:var(--text-sec);margin-bottom:12px;">Avalie o conhecimento de cada mapa (1 a 5 estrelas)</div>${mapRows}<div style="margin-top:20px;display:flex;gap:12px">${stepN > 1 ? `<button class="btn btn-ghost" onclick="evalState.step--;renderEvalStep()">← Voltar</button>` : ''}<button class="btn btn-gold" onclick="evalState.step++;renderEvalStep()">${stepN < totalSteps ? 'Próximo →' : 'Mata-Mata →'}</button></div></div>`;
     ATTRS.forEach(a => updateSliderBg(a.key, ratings[a.key]));
 }
-function onStarClick(pId, k, v) {
-  evalState.ratings[pId][k] = v;
+function onStarClick(pId, k, index) {
+  const currentVal = evalState.ratings[pId][k] || 0;
+  let newVal = index;
+  
+  if (currentVal === index) {
+    newVal = index - 0.5;
+  } else if (currentVal === index - 0.5) {
+    newVal = index;
+  }
+
+  evalState.ratings[pId][k] = newVal;
   const container = document.getElementById('stars-' + pId + '-' + k);
-  if (container) container.style.setProperty('--fill', (v / 5) * 100 + '%');
+  if (container) container.style.setProperty('--fill', (newVal / 5) * 100 + '%');
 }
 function onSlider(pId, k) {
   const v = parseInt(document.getElementById('sl-' + k).value);
