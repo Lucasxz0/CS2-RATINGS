@@ -40,35 +40,35 @@ const ROLE_DISPLAY_NAMES = {
 const CARD_ATTRS_LEFT = ['aim', 'reflexo', 'sense'];
 const CARD_ATTRS_RIGHT = ['teamplay', 'clutch', 'comms'];
 const MM_QUESTIONS = [
-  { id: 'mvp', emoji: '🏆', q: 'Quem é o MVP da line?', short: 'MVP', bonus: 2.0 },
-  { id: 'carrega', emoji: '🚛', q: 'Quem carrega o time?', short: 'Carregador', bonus: 2.0 },
-  { id: 'melhorMira', emoji: '🎯', q: 'Quem possui a melhor mira?', short: 'Melhor Mira (AIM)', bonus: 2.0 },
-  { id: 'melhorSense', emoji: '🧠', q: 'Quem possui o melhor Game Sense?', short: 'Game Sense', bonus: 2.0 },
-  { id: 'reiClutch', emoji: '💣', q: 'Quem é o Rei do Clutch?', short: 'Rei do Clutch', bonus: 1.5 },
-  { id: 'melhorComms', emoji: '🎙️', q: 'Quem tem a melhor comunicação?', short: 'Boa Comunicação', bonus: 1.5 },
-  { id: 'melhorIGL', emoji: '👑', q: 'Quem é o melhor IGL?', short: 'Melhor IGL', bonus: 1.5 },
-  { id: 'consistente', emoji: '📈', q: 'Quem é o jogador mais consistente?', short: 'Mais Consistente', bonus: 1.5 },
-  { id: 'melhorAWP', emoji: '🔭', q: 'Quem é o melhor AWPer?', short: 'Melhor AWP', bonus: 1.0 },
-  { id: 'melhorEntry', emoji: '⚔️', q: 'Quem é o melhor Entry?', short: 'Melhor Entry', bonus: 1.0 },
-  { id: 'melhorLurker', emoji: '🥷', q: 'Quem é o melhor Lurker?', short: 'Melhor Lurker', bonus: 1.0 },
-  { id: 'melhorSupport', emoji: '🛡️', q: 'Quem é o melhor Support?', short: 'Melhor Suporte', bonus: 1.0 },
-  { id: 'engracado', emoji: '😂', q: 'Quem é o mais engraçado?', short: 'Engraçado', bonus: 0.5 },
-  { id: 'frio', emoji: '😎', q: 'Quem é o mais frio?', short: 'Frio e Calculista', bonus: 0.5 },
-  { id: 'mentalidade', emoji: '🔥', q: 'Quem tem a melhor mentalidade?', short: 'Mentalidade Forte', bonus: 0.5 },
-  { id: 'parceiro', emoji: '🤝', q: 'Quem é o melhor parceiro?', short: 'Bom Parceiro', bonus: 0.5 },
-  { id: 'trolla', emoji: '🤡', q: 'Quem trolla a partida?', short: 'Troll da Partida', bonus: -2.0 },
-  { id: 'ragequit', emoji: '🔌', q: 'Quem dá rage quit?', short: 'Rage Quitter', bonus: -2.0 },
-  { id: 'naoComunica', emoji: '🔇', q: 'Quem não comunica?', short: 'Mudo', bonus: -2.0 },
-  { id: 'semUtilitaria', emoji: '🚫', q: 'Quem não sabe usar utilitária?', short: 'Inimigo das Granadas', bonus: -1.5 },
-  { id: 'morrePrimeiro', emoji: '💀', q: 'Quem morre primeiro sem trocar?', short: 'First Blood Ambulante', bonus: -1.5 },
-  { id: 'naoJogaEquipe', emoji: '🐺', q: 'Quem nunca joga em equipe?', short: 'Lobo Solitário', bonus: -1.5 },
-  { id: 'fazBarulho', emoji: '🐘', q: 'Quem faz muito barulho (passos)?', short: 'Pé de Elefante', bonus: -1.0 },
-  { id: 'compraErrado', emoji: '🛒', q: 'Quem compra errado?', short: 'Força Todo Round', bonus: -1.0 },
-  { id: 'maisTiltado', emoji: '🤬', q: 'Quem é o mais tiltado?', short: 'Tiltado', bonus: -1.0 },
-  { id: 'perdeClutchAnsiedade', emoji: '😰', q: 'Quem perde clutch por ansiedade?', short: 'Pipoca no Clutch', bonus: -1.0 },
-  { id: 'atrasaEntrar', emoji: '🐌', q: 'Quem atrasa para entrar?', short: 'Lento / Baits', bonus: -0.5 },
-  { id: 'reclamaMuito', emoji: '🗣️', q: 'Quem reclama muito?', short: 'Reclamão', bonus: -0.5 },
-  { id: 'rushaDemais', emoji: '🏃', q: 'Quem rusha demais?', short: 'W + Mouse 1', bonus: -0.5 }
+  { id: 'mvp', emoji: '🏆', q: 'Quem é o MVP da line?', short: 'MVP', bonus: 0.35 },
+  { id: 'carrega', emoji: '🚛', q: 'Quem carrega o time?', short: 'Carregador', bonus: 0.50 },
+  { id: 'melhorMira', emoji: '🎯', q: 'Quem possui a melhor mira?', short: 'Melhor Mira (AIM)', bonus: 0.20 },
+  { id: 'melhorSense', emoji: '🧠', q: 'Quem possui o melhor Game Sense?', short: 'Game Sense', bonus: 0.20 },
+  { id: 'reiClutch', emoji: '💣', q: 'Quem é o Rei do Clutch?', short: 'Rei do Clutch', bonus: 0.20 },
+  { id: 'melhorComms', emoji: '🎙️', q: 'Quem tem a melhor comunicação?', short: 'Boa Comunicação', bonus: 0.20 },
+  { id: 'melhorIGL', emoji: '👑', q: 'Quem é o melhor IGL?', short: 'Melhor IGL', bonus: 0.35 },
+  { id: 'consistente', emoji: '📈', q: 'Quem é o jogador mais consistente?', short: 'Mais Consistente', bonus: 0.35 },
+  { id: 'melhorAWP', emoji: '🔭', q: 'Quem é o melhor AWPer?', short: 'Melhor AWP', bonus: 0.20 },
+  { id: 'melhorEntry', emoji: '⚔️', q: 'Quem é o melhor Entry?', short: 'Melhor Entry', bonus: 0.20 },
+  { id: 'melhorLurker', emoji: '🥷', q: 'Quem é o melhor Lurker?', short: 'Melhor Lurker', bonus: 0.20 },
+  { id: 'melhorSupport', emoji: '🛡️', q: 'Quem é o melhor Support?', short: 'Melhor Suporte', bonus: 0.20 },
+  { id: 'engracado', emoji: '😂', q: 'Quem é o mais engraçado?', short: 'Engraçado', bonus: 0.10 },
+  { id: 'frio', emoji: '😎', q: 'Quem é o mais frio?', short: 'Frio e Calculista', bonus: 0.10 },
+  { id: 'mentalidade', emoji: '🔥', q: 'Quem tem a melhor mentalidade?', short: 'Mentalidade Forte', bonus: 0.10 },
+  { id: 'parceiro', emoji: '🤝', q: 'Quem é o melhor parceiro?', short: 'Bom Parceiro', bonus: 0.10 },
+  { id: 'trolla', emoji: '🤡', q: 'Quem trolla a partida?', short: 'Troll da Partida', bonus: -0.50 },
+  { id: 'ragequit', emoji: '🔌', q: 'Quem dá rage quit?', short: 'Rage Quitter', bonus: -0.50 },
+  { id: 'naoComunica', emoji: '🔇', q: 'Quem não comunica?', short: 'Mudo', bonus: -0.35 },
+  { id: 'semUtilitaria', emoji: '🚫', q: 'Quem não sabe usar utilitária?', short: 'Inimigo das Granadas', bonus: -0.35 },
+  { id: 'morrePrimeiro', emoji: '💀', q: 'Quem morre primeiro sem trocar?', short: 'First Blood Ambulante', bonus: -0.35 },
+  { id: 'naoJogaEquipe', emoji: '🐺', q: 'Quem nunca joga em equipe?', short: 'Lobo Solitário', bonus: -0.35 },
+  { id: 'fazBarulho', emoji: '🐘', q: 'Quem faz muito barulho (passos)?', short: 'Pé de Elefante', bonus: -0.20 },
+  { id: 'compraErrado', emoji: '🛒', q: 'Quem compra errado?', short: 'Força Todo Round', bonus: -0.20 },
+  { id: 'maisTiltado', emoji: '🤬', q: 'Quem é o mais tiltado?', short: 'Tiltado', bonus: -0.20 },
+  { id: 'perdeClutchAnsiedade', emoji: '😰', q: 'Quem perde clutch por ansiedade?', short: 'Pipoca no Clutch', bonus: -0.20 },
+  { id: 'atrasaEntrar', emoji: '🐌', q: 'Quem atrasa para entrar?', short: 'Lento / Baits', bonus: -0.10 },
+  { id: 'reclamaMuito', emoji: '🗣️', q: 'Quem reclama muito?', short: 'Reclamão', bonus: -0.10 },
+  { id: 'rushaDemais', emoji: '🏃', q: 'Quem rusha demais?', short: 'W + Mouse 1', bonus: -0.10 }
 ];
 
 let globalState = { players: [], evaluations: [], mataMataVotes: [], clips: [], comments: [] };
@@ -101,7 +101,7 @@ function calcBaseOverall(attrs, role) {
   const weights = ROLE_WEIGHTS[r] || ROLE_WEIGHTS['Anchor'];
   let t = 0;
   for (const [k, w] of Object.entries(weights)) t += (attrs[k] || 0) * w;
-  return Math.round(t);
+  return t;
 }
 
 function getPlayerPlaystyles(playerId) {
@@ -129,8 +129,8 @@ function getPlayerPlaystyles(playerId) {
       if (winners.includes(playerId)) { wonStyles.push(q); totalBonus += q.bonus; }
     }
   });
-  if (totalBonus > 5) totalBonus = 5;
-  if (totalBonus < -5) totalBonus = -5;
+  if (totalBonus > 1.5) totalBonus = 1.5;
+  if (totalBonus < -1.5) totalBonus = -1.5;
   return { styles: wonStyles, bonus: totalBonus };
 }
 
