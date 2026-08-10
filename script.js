@@ -132,9 +132,33 @@ function calcBaseOverall(attrs, role) {
   if (r === 'Entry') r = 'Entry Fragger';
 
   const weights = ROLE_WEIGHTS[r] || ROLE_WEIGHTS['Anchor'];
-  let t = 0;
-  for (const [k, w] of Object.entries(weights)) t += (attrs[k] || 0) * w;
-  return t;
+  let baseScore = 0;
+  for (const [k, w] of Object.entries(weights)) baseScore += (attrs[k] || 0) * w;
+
+  let arsenalSum = 0; let arsenalCount = 0;
+  for (const a of ARSENAL_ATTRS) {
+    let val = attrs[a.key] || 0;
+    if (val > 5) val = val / 20; 
+    if (val > 0) { arsenalSum += (val * 20); arsenalCount++; }
+  }
+  const arsenalAvg = arsenalCount > 0 ? arsenalSum / arsenalCount : 0;
+
+  let mapSum = 0; let mapCount = 0;
+  for (const a of MAP_POOL) {
+    let val = attrs[a.key] || 0;
+    if (val > 5) val = val / 20; 
+    if (val > 0) { mapSum += (val * 20); mapCount++; }
+  }
+  const mapAvg = mapCount > 0 ? mapSum / mapCount : 0;
+
+  let baseWeight = 1.0;
+  let arsenalWeight = 0;
+  let mapWeight = 0;
+  
+  if (arsenalCount > 0) { baseWeight -= 0.10; arsenalWeight = 0.10; }
+  if (mapCount > 0) { baseWeight -= 0.10; mapWeight = 0.10; }
+
+  return (baseScore * baseWeight) + (arsenalAvg * arsenalWeight) + (mapAvg * mapWeight);
 }
 
 function getPlayerPlaystyles(playerId) {
