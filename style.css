@@ -1796,6 +1796,10 @@ textarea.input-box {
   border-radius: var(--radius);
   padding: 20px;
   margin-bottom: 20px;
+  position: sticky;
+  top: 70px;
+  z-index: 90;
+  box-shadow: 0 4px 30px rgba(0, 0, 0, 0.6);
 }
 
 .wizard-avatar {
