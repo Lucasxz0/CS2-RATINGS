@@ -1527,11 +1527,20 @@ function startEvalWizard() {
 
   const draftKey = `evalDraft_${currentUser.id}_${currentTeam.id}`;
   const draft = localStorage.getItem(draftKey);
+  const myMM = globalState.mataMataVotes.find(v => v.evaluator_id === currentUser.id);
+
   if (draft) {
     try {
       const parsed = JSON.parse(draft);
       if (parsed && parsed.players && parsed.players.length > 0) {
         evalState = parsed;
+        
+        // BUGFIX: Se o celular tem um rascunho, mas ainda não tinha votado no mata-mata nele,
+        // puxamos do banco de dados (myMM) para preencher os votos antigos!
+        if (myMM && myMM.votes && (!evalState.mataMata || Object.keys(evalState.mataMata).length === 0)) {
+          evalState.mataMata = { ...myMM.votes };
+        }
+
         toast('Retomando rascunho salvo...', 'inf');
         renderEvalStep();
         return;
@@ -1543,7 +1552,6 @@ function startEvalWizard() {
 
   // Pré-carrega avaliações anteriores se existirem (para permitir edição)
   const myEvals = globalState.evaluations.filter(e => e.evaluatorId === loggedInPlayerId);
-  const myMM = globalState.mataMataVotes.find(v => v.evaluator_id === currentUser.id);
 
   evalState.players.forEach(p => {
     evalState.ratings[p.id] = {};
@@ -1564,7 +1572,8 @@ function startEvalWizard() {
   });
 
   if (myMM && myMM.votes) {
-    evalState.mataMata = myMM.votes;
+    // Clonar o objeto para não alterar o state global
+    evalState.mataMata = { ...myMM.votes };
   }
 
   renderEvalStep();
