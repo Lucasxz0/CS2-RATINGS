@@ -1,0 +1,7 @@
+node_modules/
+all_files.txt
+all_files2.txt
+gen_final_sql.js
+restore_final.sql
+setup_news.sql
+.DS_Store

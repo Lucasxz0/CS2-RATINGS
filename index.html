@@ -371,7 +371,7 @@
 
     <nav class="nav-center">
       <button class="nav-btn active" onclick="nav('colecao')" id="nav-colecao">Cartinhas</button>
-      <button class="nav-btn" onclick="nav('clips')" id="nav-clips">Clips</button>
+      <button class="nav-btn" onclick="nav('feed')" id="nav-feed">Feed</button>
       <button class="nav-btn" onclick="nav('avaliar')" id="nav-avaliar">Avaliar</button>
       <button class="nav-btn" onclick="nav('matamata')" id="nav-matamata">Mata-Mata</button>
       <button class="nav-btn admin-nav-btn" onclick="nav('admin')" id="nav-admin" style="display:none">🔧 Admin</button>
@@ -507,16 +507,31 @@
       <div id="collection-container"></div>
     </section>
 
-    <!-- ===== CLIPS FEED ===== -->
-    <section class="section" id="section-clips">
+    <!-- ===== FEED (NOTÍCIAS & CLIPS) ===== -->
+    <section class="section" id="section-feed">
       <div class="feed-container">
-        <div style="text-align: center; margin-bottom: 30px;">
-          <h1 class="page-title">Clips <span>Feed</span></h1>
-          <p class="page-sub">Compartilhe suas jogadas, reaja e comente!</p>
+        
+        <!-- TABS -->
+        <div class="feed-tabs-container">
+          <button class="feed-tab-btn active" onclick="switchFeedTab('news')" id="tab-btn-news">📰 Notícias</button>
+          <button class="feed-tab-btn" onclick="switchFeedTab('clips')" id="tab-btn-clips">🎬 Clips</button>
         </div>
-        <div id="clips-container"></div>
+
+        <!-- NOTÍCIAS -->
+        <div id="news-container">
+          <div style="text-align: center; margin-top: 20px; color: var(--text-sec);">Carregando notícias...</div>
+        </div>
+
+        <!-- CLIPS -->
+        <div id="clips-wrap" style="display:none;">
+          <div style="text-align: center; margin-bottom: 30px;">
+            <p class="page-sub">Compartilhe suas jogadas, reaja e comente!</p>
+          </div>
+          <div id="clips-container"></div>
+          <button class="fab" onclick="openModal('modal-new-clip')" title="Postar novo clip">+</button>
+        </div>
+
       </div>
-      <button class="fab" onclick="openModal('modal-new-clip')" title="Postar novo clip">+</button>
     </section>
 
     <!-- ===== AVALIAR ===== -->
@@ -542,9 +557,9 @@
         <span class="mbn-icon">🃏</span>
         <span class="mbn-label">Cartinhas</span>
       </button>
-      <button class="mbn-btn" onclick="nav('clips')" id="mbn-clips">
-        <span class="mbn-icon">🎬</span>
-        <span class="mbn-label">Clips</span>
+      <button class="mbn-btn" onclick="nav('feed')" id="mbn-feed">
+        <span class="mbn-icon">📰</span>
+        <span class="mbn-label">Feed</span>
       </button>
       <button class="mbn-btn" onclick="nav('avaliar')" id="mbn-avaliar">
         <span class="mbn-icon">⭐</span>

@@ -104,7 +104,7 @@ const MM_QUESTIONS = [
   { id: 'rushaDemais', emoji: '🏃', q: 'Quem rusha demais?', short: 'W + Mouse 1', bonus: -0.10 }
 ];
 
-let globalState = { players: [], evaluations: [], mataMataVotes: [], clips: [], comments: [] };
+let globalState = { players: [], evaluations: [], mataMataVotes: [], clips: [], comments: [], news: [] };
 let currentUser = null; // Supabase user
 let loggedInPlayerId = null; // Ex: 'vitin'
 
@@ -1045,12 +1045,13 @@ async function fetchAllData() {
   if (!currentTeam) return;
 
   try {
-    const [playersRes, evalsRes, mmRes, clipsRes, commRes] = await Promise.all([
+    const [playersRes, evalsRes, mmRes, clipsRes, commRes, newsRes] = await Promise.all([
       sbClient.from('players').select('*').eq('team_id', currentTeam.id),
       sbClient.from('evaluations').select('*').eq('team_id', currentTeam.id),
       sbClient.from('mata_mata_votes').select('*').eq('team_id', currentTeam.id),
       sbClient.from('clips').select('*').eq('team_id', currentTeam.id),
-      sbClient.from('comments').select('*').eq('team_id', currentTeam.id)
+      sbClient.from('comments').select('*').eq('team_id', currentTeam.id),
+      sbClient.from('news_feed').select('*').order('published_at', { ascending: false }).limit(20)
     ]);
 
     globalState.players = (playersRes.data || []).map(dbP => ({
@@ -1089,6 +1090,8 @@ async function fetchAllData() {
     globalState.comments = (commRes.data || []).map(cm => ({
       ...cm, playerId: getPlayerKeyByAuthId(cm.player_id), clipId: cm.clip_id
     }));
+
+    globalState.news = newsRes.data || [];
 
     // Recalcula quem é o jogador logado dentro deste time (via owner_id),
     // já que times diferentes têm cartinhas diferentes para a mesma conta.
@@ -1137,7 +1140,6 @@ function updateHeader() {
   const mbnAdmin = document.getElementById('mbn-admin');
   if (mbnAdmin) mbnAdmin.style.display = loggedInPlayerId === 'lucas' ? 'flex' : 'none';
 }
-
 // =========================================
 // NAVIGATION & MODALS
 // =========================================
@@ -1152,10 +1154,68 @@ function nav(id) {
   if (mbn) mbn.classList.add('active');
 
   if (id === 'colecao') renderCollection();
-  if (id === 'clips') renderClips();
+  if (id === 'feed') switchFeedTab('news');
   if (id === 'avaliar') startEvalWizard();
   if (id === 'matamata') renderMMResults();
   if (id === 'admin') renderAdminPanel();
+}
+
+// =========================================
+// FEED (NOTÍCIAS E CLIPS)
+// =========================================
+function switchFeedTab(tab) {
+  document.getElementById('tab-btn-news').classList.remove('active');
+  document.getElementById('tab-btn-clips').classList.remove('active');
+  document.getElementById('news-container').style.display = 'none';
+  document.getElementById('clips-wrap').style.display = 'none';
+  
+  if (tab === 'news') {
+    document.getElementById('tab-btn-news').classList.add('active');
+    document.getElementById('news-container').style.display = 'block';
+    renderNews();
+  } else {
+    document.getElementById('tab-btn-clips').classList.add('active');
+    document.getElementById('clips-wrap').style.display = 'block';
+    renderClips();
+  }
+}
+
+function timeAgo(dateString) {
+  const diff = Date.now() - new Date(dateString).getTime();
+  const m = Math.floor(diff / 60000);
+  const h = Math.floor(m / 60);
+  const d = Math.floor(h / 24);
+  if (d > 0) return `Há ${d} dia${d>1?'s':''}`;
+  if (h > 0) return `Há ${h} hora${h>1?'s':''}`;
+  if (m > 0) return `Há ${m} minuto${m>1?'s':''}`;
+  return 'Agora mesmo';
+}
+
+function renderNews() {
+  const container = document.getElementById('news-container');
+  if (!globalState.news || globalState.news.length === 0) {
+    container.innerHTML = `<div class="empty">Nenhuma notícia encontrada no momento.</div>`;
+    return;
+  }
+  
+  container.innerHTML = globalState.news.map(news => {
+    const thumb = news.image_url ? `style="background-image:url('${esc(news.image_url)}')"` : '';
+    const srcDisplay = { 'hltv': 'HLTV', 'dust2br': 'DUST2 BR', 'dust2us': 'DUST2 US' }[news.source] || news.source;
+    
+    return `
+      <a href="${esc(news.link)}" target="_blank" rel="noopener noreferrer" class="news-card">
+        <div class="news-thumb" ${thumb}></div>
+        <div class="news-info">
+          <div class="news-meta">
+            <span class="news-source-badge source-${esc(news.source)}">${esc(srcDisplay)}</span>
+            <span>${timeAgo(news.published_at)}</span>
+          </div>
+          <div class="news-title">${esc(news.title)}</div>
+          <div class="news-summary">${esc(news.summary || '')}</div>
+        </div>
+      </a>
+    `;
+  }).join('');
 
   if (currentUser && currentTeam) {
     localStorage.setItem(`lastNav_${currentUser.id}_${currentTeam.id}`, id);

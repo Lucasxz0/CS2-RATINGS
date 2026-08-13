@@ -2467,6 +2467,119 @@ input[type="range"]::-webkit-slider-thumb:hover {
   display: none; /* escondido no desktop */
 }
 
+/* ===================== FEED (NOTÍCIAS & CLIPS) ===================== */
+.feed-tabs-container {
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+  margin-bottom: 30px;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 12px;
+}
+
+.feed-tab-btn {
+  background: transparent;
+  border: none;
+  color: var(--text-sec);
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 16px;
+  font-weight: 700;
+  padding: 8px 24px;
+  cursor: pointer;
+  border-radius: 100px;
+  transition: var(--trans);
+  position: relative;
+}
+
+.feed-tab-btn:hover {
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.feed-tab-btn.active {
+  color: var(--accent);
+  background: var(--accent-dim);
+}
+
+.news-card {
+  display: flex;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+  margin-bottom: 16px;
+  transition: var(--trans);
+  text-decoration: none;
+  color: var(--text);
+}
+
+.news-card:hover {
+  transform: translateY(-2px);
+  border-color: var(--accent);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+}
+
+.news-thumb {
+  width: 240px;
+  min-height: 140px;
+  background-size: cover;
+  background-position: center;
+  background-color: var(--bg-elevated);
+  flex-shrink: 0;
+  border-right: 1px solid var(--border);
+}
+
+.news-info {
+  padding: 16px 20px;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.news-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-muted);
+  text-transform: uppercase;
+}
+
+.news-source-badge {
+  padding: 2px 8px;
+  border-radius: 4px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  color: #fff;
+}
+
+.source-hltv { background: #2f3640; border-color: #353b44; color: #3498db; }
+.source-dust2br { background: #1a1a1a; border-color: #333; color: #f1c40f; }
+.source-dust2us { background: #1a1a1a; border-color: #333; color: #e74c3c; }
+
+.news-title {
+  font-family: 'Oswald', sans-serif;
+  font-size: 18px;
+  font-weight: 700;
+  line-height: 1.3;
+  margin-bottom: 8px;
+  color: var(--text);
+}
+
+.news-summary {
+  font-size: 14px;
+  color: var(--text-sec);
+  line-height: 1.5;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  margin-bottom: 12px;
+}
+
 /* ===================== MOBILE UX GLOBAL ===================== */
 @media (max-width: 768px) {
 
@@ -2482,6 +2595,17 @@ input[type="range"]::-webkit-slider-thumb:hover {
     align-items: center !important;
     justify-content: space-between !important;
     padding: 0 16px !important;
+  }
+
+  .news-card {
+    flex-direction: column;
+  }
+  
+  .news-thumb {
+    width: 100%;
+    height: 180px;
+    border-right: none;
+    border-bottom: 1px solid var(--border);
   }
 
   .logo-sub {
