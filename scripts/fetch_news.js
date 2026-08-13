@@ -57,6 +57,15 @@ async function fetchOgImage(url) {
 
 async function run() {
   console.log('Iniciando captura de notícias...');
+
+  let translate;
+  try {
+    const m = await import('@vitalets/google-translate-api');
+    translate = m.translate;
+  } catch (e) {
+    console.error('Falha ao carregar google-translate-api', e);
+  }
+
   let totalInserted = 0;
 
   for (const feed of FEEDS) {
@@ -73,10 +82,24 @@ async function run() {
           imageUrl = await fetchOgImage(item.link);
         }
 
+        let title = item.title;
+        let summary = cleanDescription(item.contentSnippet || item.description);
+
+        if (feed.source !== 'dust2br' && translate) {
+          try {
+            title = (await translate(title, { to: 'pt' })).text;
+            if (summary) {
+              summary = (await translate(summary, { to: 'pt' })).text;
+            }
+          } catch (err) {
+            console.error(`Erro ao traduzir notícia: ${title}`, err.message);
+          }
+        }
+
         inserts.push({
           guid: item.guid || item.id || item.link,
-          title: item.title,
-          summary: cleanDescription(item.contentSnippet || item.description),
+          title: title,
+          summary: summary,
           link: item.link,
           image_url: imageUrl,
           source: feed.source,
