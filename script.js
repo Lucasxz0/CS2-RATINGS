@@ -1199,7 +1199,9 @@ function renderNews() {
   }
   
   container.innerHTML = globalState.news.map(news => {
-    const thumb = news.image_url ? `style="background-image:url('${esc(news.image_url)}')"` : '';
+    // Corrige &amp; duplo gerado pelo feed RSS ou pelo esc() que quebrava o CSS
+    let cleanUrl = news.image_url ? news.image_url.replace(/&amp;/g, '&') : '';
+    const thumb = cleanUrl ? `style="background-image:url('${esc(cleanUrl).replace(/&amp;/g, '&')}')"` : '';
     const srcDisplay = { 'hltv': 'HLTV', 'dust2br': 'DUST2 BR', 'dust2us': 'DUST2 US' }[news.source] || news.source;
     
     return `
