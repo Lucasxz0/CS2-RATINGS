@@ -44,6 +44,17 @@ function cleanDescription(desc) {
   return text.trim().substring(0, 150) + (text.length > 150 ? '...' : '');
 }
 
+async function fetchOgImage(url) {
+  try {
+    const res = await fetch(url);
+    const html = await res.text();
+    const match = html.match(/<meta\s+(?:property|name)=['"]og:image['"]\s+content=['"]([^'"]+)['"]/i);
+    return match ? match[1] : null;
+  } catch (e) {
+    return null;
+  }
+}
+
 async function run() {
   console.log('Iniciando captura de notícias...');
   let totalInserted = 0;
@@ -53,15 +64,25 @@ async function run() {
     try {
       const feedData = await parser.parseURL(feed.url);
       
-      const inserts = feedData.items.map(item => ({
-        guid: item.guid || item.id || item.link,
-        title: item.title,
-        summary: cleanDescription(item.contentSnippet || item.description),
-        link: item.link,
-        image_url: extractImage(item),
-        source: feed.source,
-        published_at: new Date(item.pubDate || item.isoDate).toISOString()
-      }));
+      const inserts = [];
+      for (const item of feedData.items) {
+        let imageUrl = extractImage(item);
+        
+        // Se o RSS não mandou a imagem (como o Dust2), vamos buscar na própria página HTML da notícia
+        if (!imageUrl && item.link) {
+          imageUrl = await fetchOgImage(item.link);
+        }
+
+        inserts.push({
+          guid: item.guid || item.id || item.link,
+          title: item.title,
+          summary: cleanDescription(item.contentSnippet || item.description),
+          link: item.link,
+          image_url: imageUrl,
+          source: feed.source,
+          published_at: new Date(item.pubDate || item.isoDate).toISOString()
+        });
+      }
 
       // Inserir ignorando duplicatas (o guid é UNIQUE no banco)
       const { data, error } = await supabase
