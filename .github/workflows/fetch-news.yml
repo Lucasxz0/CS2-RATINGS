@@ -21,8 +21,15 @@ jobs:
       - name: Install dependencies
         run: npm install rss-parser @supabase/supabase-js @vitalets/google-translate-api
         
-      - name: Run Fetch Script
+      - name: Run Fetch Script (Notícias)
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
         run: node scripts/fetch_news.js
+
+      - name: Run Fetch Script (Partidas)
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+          PANDASCORE_TOKEN: ${{ secrets.PANDASCORE_TOKEN }}
+        run: node scripts/fetch_matches.js

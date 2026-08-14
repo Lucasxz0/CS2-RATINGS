@@ -515,6 +515,7 @@
         <div class="feed-tabs-container">
           <button class="feed-tab-btn active" onclick="switchFeedTab('news')" id="tab-btn-news">📰 Notícias</button>
           <button class="feed-tab-btn" onclick="switchFeedTab('clips')" id="tab-btn-clips">🎬 Clips</button>
+          <button class="feed-tab-btn" onclick="switchFeedTab('matches')" id="tab-btn-matches">📅 Partidas</button>
         </div>
 
         <!-- NOTÍCIAS -->
@@ -529,6 +530,16 @@
           </div>
           <div id="clips-container"></div>
           <button class="fab" onclick="openModal('modal-new-clip')" title="Postar novo clip">+</button>
+        </div>
+
+        <!-- PARTIDAS (MATCHES) -->
+        <div id="matches-wrap" style="display:none;">
+          <div style="text-align: center; margin-bottom: 30px;">
+            <p class="page-sub">Agenda dos próximos jogos do cenário profissional de CS2</p>
+          </div>
+          <div id="matches-container">
+             <div style="text-align: center; margin-top: 20px; color: var(--text-sec);">Carregando partidas...</div>
+          </div>
         </div>
 
       </div>

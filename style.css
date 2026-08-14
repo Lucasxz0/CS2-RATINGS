@@ -3368,3 +3368,159 @@ input[type="range"]::-webkit-slider-thumb:hover {
 .map-icon.anubis { background-image: url('https://raw.githubusercontent.com/MurkyYT/cs2-map-icons/main/images/de_anubis.png'); }
 .map-icon.vertigo { background-image: url('https://raw.githubusercontent.com/MurkyYT/cs2-map-icons/main/images/de_vertigo.png'); }
 .map-icon.cache { background-image: url('https://raw.githubusercontent.com/MurkyYT/cs2-map-icons/main/images/de_cache.png'); }
+
+/* =========================================
+   MATCHES (PARTIDAS PROFISSIONAIS)
+========================================= */
+#matches-container {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin-top: 20px;
+}
+
+.match-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 16px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  position: relative;
+  overflow: hidden;
+  transition: transform 0.2s, border-color 0.2s, box-shadow 0.2s;
+}
+
+.match-card:hover {
+  transform: translateY(-2px);
+  border-color: rgba(255, 215, 0, 0.4);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+}
+
+.match-card.is-live {
+  border-color: rgba(220, 38, 38, 0.6);
+  box-shadow: 0 0 15px rgba(220, 38, 38, 0.2);
+}
+
+.match-card.is-live::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, #dc2626, transparent);
+  animation: live-scan 2s linear infinite;
+}
+
+@keyframes live-scan {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
+
+.match-tournament {
+  font-family: 'Rajdhani', sans-serif;
+  font-weight: 600;
+  font-size: 13px;
+  color: var(--text-sec);
+  text-align: center;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.match-teams-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.match-team {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  flex: 1;
+  gap: 8px;
+}
+
+.match-team-logo {
+  width: 56px;
+  height: 56px;
+  background-size: contain;
+  background-position: center;
+  background-repeat: no-repeat;
+  filter: drop-shadow(0 4px 6px rgba(0,0,0,0.3));
+}
+
+.match-team-name {
+  font-family: 'Oswald', sans-serif;
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text-main);
+  text-align: center;
+}
+
+.match-vs {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  flex: 0.8;
+  gap: 8px;
+}
+
+.match-status {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  font-weight: 700;
+  padding: 4px 10px;
+  border-radius: var(--radius-sm);
+  text-align: center;
+}
+
+.match-status.live {
+  background: rgba(220, 38, 38, 0.15);
+  color: #ef4444;
+  border: 1px solid rgba(220, 38, 38, 0.3);
+  animation: pulse-red 2s infinite;
+}
+
+@keyframes pulse-red {
+  0% { box-shadow: 0 0 0 0 rgba(220, 38, 38, 0.4); }
+  70% { box-shadow: 0 0 0 6px rgba(220, 38, 38, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(220, 38, 38, 0); }
+}
+
+.match-status.ended {
+  background: rgba(100, 116, 139, 0.15);
+  color: #94a3b8;
+  border: 1px solid rgba(100, 116, 139, 0.3);
+}
+
+.match-status.date {
+  background: rgba(255, 215, 0, 0.1);
+  color: var(--primary);
+  border: 1px solid rgba(255, 215, 0, 0.2);
+}
+
+.match-stream-btn {
+  display: inline-block;
+  background: #6441a5;
+  color: white;
+  font-family: 'Inter', sans-serif;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 6px 12px;
+  border-radius: 6px;
+  text-decoration: none;
+  transition: background 0.2s, transform 0.2s;
+}
+
+.match-stream-btn:hover {
+  background: #7d5bbe;
+  transform: scale(1.05);
+}
+
+@media (max-width: 480px) {
+  .match-team-logo { width: 44px; height: 44px; }
+  .match-team-name { font-size: 14px; }
+  .match-status { font-size: 11px; padding: 4px 8px; }
+}

@@ -36,6 +36,8 @@ const CS2_WEAPONS = [
 ];
 
 const ATTRS = [
+  { key: 'ct', icon: '👮', short: 'CT', full: 'CT', desc: 'Desempenho no Lado Contra-Terrorista' },
+  { key: 'tr', icon: '🥷', short: 'TR', full: 'TR', desc: 'Desempenho no Lado Terrorista' },
   { key: 'aim', icon: '🎯', short: 'AIM', full: 'AIM', desc: 'Capacidade de ganhar trocação' },
   { key: 'reflexo', icon: '⚡', short: 'REFLEXO', full: 'REFLEXO', desc: 'Velocidade de reação' },
   { key: 'sense', icon: '🧠', short: 'GAME SENSE', full: 'GAME SENSE', desc: 'Leitura de jogo' },
@@ -132,38 +134,46 @@ function calcBaseOverall(attrs, role) {
   if (r === 'Entry') r = 'Entry Fragger';
 
   const weights = ROLE_WEIGHTS[r] || ROLE_WEIGHTS['Anchor'];
+  
+  // Bloco 1: Atributos Principais (70%)
   let baseScore = 0;
-  for (const [k, w] of Object.entries(weights)) baseScore += (attrs[k] || 0) * w;
+  for (const [k, w] of Object.entries(weights)) {
+    baseScore += (attrs[k] || 0) * w;
+  }
 
+  // Bloco 2: Lados CT e TR (10%)
+  let ct = attrs['ct'] || 0;
+  let tr = attrs['tr'] || 0;
+  let sideScore;
+  if (ct === 0 && tr === 0) {
+    sideScore = baseScore;
+  } else {
+    sideScore = (ct + tr) / 2;
+  }
+
+  // Bloco 3: Arsenal (10%)
   let arsenalSum = 0; let arsenalCount = 0;
   for (const a of ARSENAL_ATTRS) {
     let val = attrs[a.key] || 0;
     if (val > 5) val = val / 20; 
     if (val > 0) { arsenalSum += (val * 20); arsenalCount++; }
   }
-  const arsenalAvg = arsenalCount > 0 ? arsenalSum / arsenalCount : 0;
+  let arsenalScore = arsenalCount > 0 ? (arsenalSum / arsenalCount) : baseScore;
 
+  // Bloco 4: Map Pool (10%)
   let mapSum = 0; let mapCount = 0;
   for (const a of MAP_POOL) {
     let val = attrs[a.key] || 0;
     if (val > 5) val = val / 20; 
     if (val > 0) { mapSum += (val * 20); mapCount++; }
   }
-  const mapAvg = mapCount > 0 ? mapSum / mapCount : 0;
+  let mapScore = mapCount > 0 ? (mapSum / mapCount) : baseScore;
 
-  let baseWeight = 1.0;
-  let arsenalWeight = 0;
-  let mapWeight = 0;
-  
-  if (arsenalCount > 0) { baseWeight -= 0.05; arsenalWeight = 0.05; }
-  if (mapCount > 0) { baseWeight -= 0.05; mapWeight = 0.05; }
-
-  return (baseScore * baseWeight) + (arsenalAvg * arsenalWeight) + (mapAvg * mapWeight);
+  return (baseScore * 0.70) + (sideScore * 0.10) + (arsenalScore * 0.10) + (mapScore * 0.10);
 }
 
 function getPlayerPlaystyles(playerId) {
-  // Cada linha de mataMataVotes tem um campo `votes` (JSON: categoryId -> playerId).
-  const votesCount = {}; // { categoryId: { playerId: contagem } }
+  const votesCount = {}; 
   globalState.mataMataVotes.forEach(row => {
     if (!row.votes) return;
     for (const categoryId in row.votes) {
@@ -172,22 +182,42 @@ function getPlayerPlaystyles(playerId) {
       votesCount[categoryId][votedPlayerId] = (votesCount[categoryId][votedPlayerId] || 0) + 1;
     }
   });
+
   const wonStyles = [];
   let totalBonus = 0;
+
   MM_QUESTIONS.forEach(q => {
     if (votesCount[q.id]) {
       const counts = votesCount[q.id];
-      let maxVotes = 0;
-      let winners = [];
-      for (const pId in counts) {
-        if (counts[pId] > maxVotes) { maxVotes = counts[pId]; winners = [pId]; }
-        else if (counts[pId] === maxVotes) { winners.push(pId); }
+      const sorted = Object.keys(counts).map(pId => ({ pId, c: counts[pId] })).sort((a, b) => b.c - a.c);
+      
+      let rank = 1;
+      let lastVotes = sorted[0].c;
+      for (let i = 0; i < sorted.length; i++) {
+        if (sorted[i].c < lastVotes) {
+          rank++;
+          lastVotes = sorted[i].c;
+        }
+        if (rank > 3) break;
+        
+        if (sorted[i].pId === playerId) {
+          let multiplier = 0;
+          let medalTier = '';
+          if (rank === 1) { multiplier = 1.0; medalTier = 'gold'; }
+          else if (rank === 2) { multiplier = 0.60; medalTier = 'silver'; }
+          else if (rank === 3) { multiplier = 0.35; medalTier = 'bronze'; }
+          
+          if (multiplier > 0) {
+            totalBonus += q.bonus * multiplier;
+            wonStyles.push({ ...q, medalTier });
+          }
+        }
       }
-      if (winners.includes(playerId)) { wonStyles.push(q); totalBonus += q.bonus; }
     }
   });
-  if (totalBonus > 1.5) totalBonus = 1.5;
-  if (totalBonus < -1.5) totalBonus = -1.5;
+
+  if (totalBonus > 3.0) totalBonus = 3.0;
+  if (totalBonus < -3.0) totalBonus = -3.0;
   return { styles: wonStyles, bonus: totalBonus };
 }
 
@@ -206,21 +236,29 @@ function avgAttrs(evals) {
   
   evals.forEach(e => {
     ATTRS.forEach(a => {
-      sum[a.key] += (e[a.key] || 0);
-      counts[a.key]++; // Sliders sempre contam
+      // Para CT e TR, só conta se não for null/undefined
+      if (a.key === 'ct' || a.key === 'tr') {
+        if (e[a.key] !== null && e[a.key] !== undefined) {
+          sum[a.key] += e[a.key];
+          counts[a.key]++;
+        }
+      } else {
+        sum[a.key] += (e[a.key] || 0);
+        counts[a.key]++; // Sliders base sempre contam
+      }
     });
     ARSENAL_ATTRS.forEach(a => {
       let val = e[a.key] || 0;
-      if (val > 5) val = val / 20; // Normaliza legado 0-100 para 0-5
-      if (val > 0) { // S conta se a pessoa votou (maior que 0)
+      if (val > 5) val = val / 20; 
+      if (val > 0) { 
         sum[a.key] += val;
         counts[a.key]++;
       }
     });
     MAP_POOL.forEach(a => {
       let val = e[a.key] || 0;
-      if (val > 5) val = val / 20; // Normaliza legado 0-100 para 0-5
-      if (val > 0) { // S conta se a pessoa votou (maior que 0)
+      if (val > 5) val = val / 20; 
+      if (val > 0) { 
         sum[a.key] += val;
         counts[a.key]++;
       }
@@ -228,7 +266,13 @@ function avgAttrs(evals) {
   });
 
   const avg = {}; 
-  ATTRS.forEach(a => avg[a.key] = Math.round(sum[a.key] / Math.max(1, counts[a.key])));
+  ATTRS.forEach(a => {
+    if ((a.key === 'ct' || a.key === 'tr') && counts[a.key] === 0) {
+      avg[a.key] = 0; // Vai cair no fallback ct===0 && tr===0 do calcBaseOverall
+    } else {
+      avg[a.key] = Math.round(sum[a.key] / Math.max(1, counts[a.key]));
+    }
+  });
   ARSENAL_ATTRS.forEach(a => avg[a.key] = parseFloat((sum[a.key] / Math.max(1, counts[a.key])).toFixed(1)));
   MAP_POOL.forEach(a => avg[a.key] = parseFloat((sum[a.key] / Math.max(1, counts[a.key])).toFixed(1)));
   return avg;
@@ -1045,13 +1089,14 @@ async function fetchAllData() {
   if (!currentTeam) return;
 
   try {
-    const [playersRes, evalsRes, mmRes, clipsRes, commRes, newsRes] = await Promise.all([
+    const [playersRes, evalsRes, mmRes, clipsRes, commRes, newsRes, matchesRes] = await Promise.all([
       sbClient.from('players').select('*').eq('team_id', currentTeam.id),
       sbClient.from('evaluations').select('*').eq('team_id', currentTeam.id),
       sbClient.from('mata_mata_votes').select('*').eq('team_id', currentTeam.id),
       sbClient.from('clips').select('*').eq('team_id', currentTeam.id),
       sbClient.from('comments').select('*').eq('team_id', currentTeam.id),
-      sbClient.from('news_feed').select('*').order('published_at', { ascending: false }).limit(20)
+      sbClient.from('news_feed').select('*').order('published_at', { ascending: false }).limit(20),
+      sbClient.from('pro_matches').select('*').order('match_time', { ascending: true })
     ]);
 
     globalState.players = (playersRes.data || []).map(dbP => ({
@@ -1092,6 +1137,7 @@ async function fetchAllData() {
     }));
 
     globalState.news = newsRes.data || [];
+    globalState.matches = matchesRes.data || [];
 
     // Recalcula quem é o jogador logado dentro deste time (via owner_id),
     // já que times diferentes têm cartinhas diferentes para a mesma conta.
@@ -1166,13 +1212,22 @@ function nav(id) {
 function switchFeedTab(tab) {
   document.getElementById('tab-btn-news').classList.remove('active');
   document.getElementById('tab-btn-clips').classList.remove('active');
+  const btnMatches = document.getElementById('tab-btn-matches');
+  if (btnMatches) btnMatches.classList.remove('active');
+  
   document.getElementById('news-container').style.display = 'none';
   document.getElementById('clips-wrap').style.display = 'none';
+  const wrapMatches = document.getElementById('matches-wrap');
+  if (wrapMatches) wrapMatches.style.display = 'none';
   
   if (tab === 'news') {
     document.getElementById('tab-btn-news').classList.add('active');
     document.getElementById('news-container').style.display = 'block';
     renderNews();
+  } else if (tab === 'matches') {
+    if (btnMatches) btnMatches.classList.add('active');
+    if (wrapMatches) wrapMatches.style.display = 'block';
+    renderMatches();
   } else {
     document.getElementById('tab-btn-clips').classList.add('active');
     document.getElementById('clips-wrap').style.display = 'block';
@@ -1202,7 +1257,13 @@ function renderNews() {
     // Corrige &amp; duplo gerado pelo feed RSS ou pelo esc() que quebrava o CSS
     let cleanUrl = news.image_url ? news.image_url.replace(/&amp;/g, '&') : '';
     const thumb = cleanUrl ? `style="background-image:url('${esc(cleanUrl).replace(/&amp;/g, '&')}')"` : '';
-    const srcDisplay = { 'hltv': 'HLTV', 'dust2br': 'DUST2 BR', 'dust2us': 'DUST2 US' }[news.source] || news.source;
+    const srcMap = {
+      'hltv': 'HLTV', 'dust2br': 'DUST2 BR', 'dust2us': 'DUST2 US',
+      'dexerto': 'DEXERTO', 'adrenaline': 'ADRENALINE', 'flowgames': 'FLOW GAMES',
+      'dust2in': 'DUST2 IN', 'esportsinsider': 'ESPORTS INSIDER', 'wingg': 'WIN.GG',
+      'cybersportpl': 'CYBERSPORT'
+    };
+    const srcDisplay = srcMap[news.source] || (news.source.charAt(0).toUpperCase() + news.source.slice(1));
     
     return `
       <a href="${esc(news.link)}" target="_blank" rel="noopener noreferrer" class="news-card">
@@ -1225,6 +1286,50 @@ function renderNews() {
 
   // Scroll ao topo ao trocar de seção no mobile
   window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function renderMatches() {
+  const container = document.getElementById('matches-container');
+  
+  if (!globalState.matches || globalState.matches.length === 0) {
+    container.innerHTML = `<div class="empty">Nenhuma partida profissional agendada no momento.</div>`;
+    return;
+  }
+
+  const matches = globalState.matches;
+
+  container.innerHTML = matches.map(match => {
+    const d = new Date(match.match_time);
+    const timeStr = d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+    const dateStr = d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
+    
+    let statusBadge = '';
+    if (match.status === 'running') statusBadge = '<div class="match-status live">AO VIVO</div>';
+    else if (match.status === 'finished') statusBadge = '<div class="match-status ended">FINALIZADO</div>';
+    else statusBadge = `<div class="match-status date">${dateStr} às ${timeStr}</div>`;
+
+    const btnWatch = match.stream_url ? `<a href="${esc(match.stream_url)}" target="_blank" class="match-stream-btn">🎬 Assistir Twitch</a>` : '';
+
+    return `
+      <div class="match-card ${match.status === 'running' ? 'is-live' : ''}">
+        <div class="match-tournament">${esc(match.tournament_name)}</div>
+        <div class="match-teams-row">
+          <div class="match-team">
+            <div class="match-team-logo" style="background-image:url('${esc(match.team1_logo || '')}')"></div>
+            <div class="match-team-name">${esc(match.team1_name || 'TBD')}</div>
+          </div>
+          <div class="match-vs">
+            ${statusBadge}
+            ${btnWatch}
+          </div>
+          <div class="match-team">
+            <div class="match-team-logo" style="background-image:url('${esc(match.team2_logo || '')}')"></div>
+            <div class="match-team-name">${esc(match.team2_name || 'TBD')}</div>
+          </div>
+        </div>
+      </div>
+    `;
+  }).join('');
 }
 
 function openModal(id) { document.getElementById(id).classList.add('open'); }
@@ -1322,9 +1427,15 @@ function openDetailModal(playerId) {
       <div style="display:flex; flex-wrap:wrap; gap:8px;">
         ${pstylesObj.styles.map(ps => {
           const isNeg = ps.bonus < 0;
-          const bg = isNeg ? 'rgba(229,57,53,0.1)' : 'rgba(255,184,0,0.1)';
-          const color = isNeg ? 'var(--red)' : 'var(--accent)';
-          const border = isNeg ? 'rgba(229,57,53,0.3)' : 'rgba(255,184,0,0.3)';
+          let bg, color, border;
+          if (isNeg) {
+            bg = 'rgba(229,57,53,0.1)'; color = 'var(--red)'; border = 'rgba(229,57,53,0.3)';
+          } else {
+            if (ps.medalTier === 'gold') { bg = 'rgba(255, 215, 0, 0.15)'; color = '#FFD700'; border = 'rgba(255, 215, 0, 0.4)'; }
+            else if (ps.medalTier === 'silver') { bg = 'rgba(192, 192, 192, 0.15)'; color = '#E0E0E0'; border = 'rgba(192, 192, 192, 0.4)'; }
+            else if (ps.medalTier === 'bronze') { bg = 'rgba(205, 127, 50, 0.15)'; color = '#CD7F32'; border = 'rgba(205, 127, 50, 0.4)'; }
+            else { bg = 'rgba(255,184,0,0.1)'; color = 'var(--accent)'; border = 'rgba(255,184,0,0.3)'; }
+          }
           return `<div style="display:inline-flex; align-items:center; gap:6px; background:${bg}; color:${color}; border:1px solid ${border}; padding:6px 12px; border-radius:20px; font-size:12px; font-weight:600; letter-spacing:0.5px; box-shadow:0 2px 8px rgba(0,0,0,0.2);">
             <span style="font-size:14px;">${ps.emoji}</span>
             <span>${esc(ps.short || ps.q)}</span>
@@ -1406,7 +1517,7 @@ function openDetailModal(playerId) {
             return `<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px; font-size:14px;"><span style="color:var(--text);">${a.short}</span><span style="display:flex; gap:8px; align-items:center;"><div class="star-component static" style="--fill: ${fillPct}%;"><div class="stars-spacer">★★★★★</div><div class="stars-bg">★★★★★</div><div class="stars-fill">★★★★★</div></div></span></div>`;
           }).join('');
           
-          let arsenalBlock = `<div style="margin-top:20px; padding-top:16px; border-top:1px solid rgba(255,255,255,0.05)"><div style="font-size:12px; color:var(--text-sec); margin-bottom:10px; font-weight:700; text-transform:uppercase; letter-spacing:1px;">Perfil de Jogo</div><div style="background:var(--bg-elevated); border:1px solid var(--border); border-radius:var(--radius); padding:16px; margin-bottom:12px;"><div style="color:var(--text-sec); font-size:12px; text-transform:uppercase; font-weight:700; margin-bottom:12px;">🔫 Arsenal</div>${arsenalRows}${bestArsenal ? `<div style="margin-top:12px; padding-top:12px; border-top:1px dashed var(--border); color:var(--accent); font-weight:700; font-size:13px; text-transform:uppercase;">🔫 Especialidade: ${bestArsenal.short} — ${bestArsenalVal.toFixed(1)}/5</div>` : ''}${player.signature_weapon ? `<div style="margin-top:8px; color:var(--text); font-weight:600; font-size:13px;">⭐ Arma Preferida: <span style="color:var(--accent);">${esc(player.signature_weapon)}</span></div>` : ''}</div>`;
+          let arsenalBlock = `<div style="margin-top:20px; padding-top:16px; border-top:1px solid rgba(255,255,255,0.05)"><div style="font-size:12px; color:var(--text-sec); margin-bottom:10px; font-weight:700; text-transform:uppercase; letter-spacing:1px;">Perfil de Jogo</div><div style="display: flex; gap: 12px; margin-bottom: 12px;"><div style="flex: 1; background: rgba(92, 133, 208, 0.15); border: 1px solid rgba(92, 133, 208, 0.3); border-radius: var(--radius); padding: 12px; text-align: center;"><div style="font-size: 12px; color: #8BA5C0; font-weight: 700; margin-bottom: 4px;">👮 LADO CT</div><div style="font-size: 24px; color: #fff; font-weight: 700;">${avg['ct'] !== undefined ? avg['ct'] : '-'}</div></div><div style="flex: 1; background: rgba(208, 168, 92, 0.15); border: 1px solid rgba(208, 168, 92, 0.3); border-radius: var(--radius); padding: 12px; text-align: center;"><div style="font-size: 12px; color: #D4956A; font-weight: 700; margin-bottom: 4px;">🥷 LADO TR</div><div style="font-size: 24px; color: #fff; font-weight: 700;">${avg['tr'] !== undefined ? avg['tr'] : '-'}</div></div></div><div style="background:var(--bg-elevated); border:1px solid var(--border); border-radius:var(--radius); padding:16px; margin-bottom:12px;"><div style="color:var(--text-sec); font-size:12px; text-transform:uppercase; font-weight:700; margin-bottom:12px;">🔫 Arsenal</div>${arsenalRows}${bestArsenal ? `<div style="margin-top:12px; padding-top:12px; border-top:1px dashed var(--border); color:var(--accent); font-weight:700; font-size:13px; text-transform:uppercase;">🔫 Especialidade: ${bestArsenal.short} — ${bestArsenalVal.toFixed(1)}/5</div>` : ''}${player.signature_weapon ? `<div style="margin-top:8px; color:var(--text); font-weight:600; font-size:13px;">⭐ Arma Preferida: <span style="color:var(--accent);">${esc(player.signature_weapon)}</span></div>` : ''}</div>`;
 
           let bestMap = null; let bestMapVal = -1;
           const mapRows = MAP_POOL.map(a => {
@@ -1799,7 +1910,20 @@ function renderMMResults() {
     globalState.mataMataVotes.forEach(v => { if (v.votes[q.id]) counts[v.votes[q.id]]++; });
     const sorted = globalState.players.map(p => ({ p, c: counts[p.id] })).sort((a, b) => b.c - a.c);
     const max = sorted[0].c || 1;
-    const bars = sorted.map(({ p, c }) => `<div class="mm-bar-row"><div class="mm-bar-name">${esc(p.name)}</div><div class="mm-bar-track"><div class="mm-bar-fill" style="width:${c ? c / max * 100 : 0}%"></div></div><div class="mm-bar-count">${c}</div></div>`).join('');
+    
+    let rank = 1;
+    let lastVotes = sorted[0].c;
+    const bars = sorted.map(({ p, c }) => {
+      if (c < lastVotes) { rank++; lastVotes = c; }
+      let medal = '';
+      if (c > 0) {
+        if (rank === 1) medal = '🥇 ';
+        else if (rank === 2) medal = '🥈 ';
+        else if (rank === 3) medal = '🥉 ';
+      }
+      return `<div class="mm-bar-row"><div class="mm-bar-name">${medal}${esc(p.name)}</div><div class="mm-bar-track"><div class="mm-bar-fill" style="width:${c ? c / max * 100 : 0}%"></div></div><div class="mm-bar-count">${c}</div></div>`;
+    }).join('');
+    
     return `<div class="mm-result-card"><div class="mm-q-label">${q.emoji} ${esc(q.q)}</div>${bars}</div>`;
   }).join('');
 }

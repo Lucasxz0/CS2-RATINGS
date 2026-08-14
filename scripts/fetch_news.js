@@ -19,13 +19,25 @@ const parser = new Parser({
   }
 });
 
+// Fontes validadas que possuem feed RSS funcional
 const FEEDS = [
-  { url: 'https://www.dust2.com.br/rss', source: 'dust2br' },
-  { url: 'https://www.hltv.org/rss/news', source: 'hltv' },
-  { url: 'https://www.dust2.us/rss', source: 'dust2us' }
+  // 🥇 Essenciais
+  { url: 'https://www.hltv.org/rss/news', source: 'hltv', lang: 'en', requireCSFilter: false },
+  { url: 'https://www.dust2.com.br/rss', source: 'dust2br', lang: 'pt', requireCSFilter: false },
+  { url: 'https://www.dust2.us/rss', source: 'dust2us', lang: 'en', requireCSFilter: false },
+  { url: 'https://www.dexerto.com/counter-strike-2/feed/', source: 'dexerto', lang: 'en', requireCSFilter: false },
+  
+  // 🇧🇷 Brasil
+  { url: 'https://www.adrenaline.com.br/feed/', source: 'adrenaline', lang: 'pt', requireCSFilter: true },
+  { url: 'https://flowgames.gg/feed/', source: 'flowgames', lang: 'pt', requireCSFilter: true },
+  
+  // 🌎 Outras fontes internacionais
+  { url: 'https://www.dust2.in/rss', source: 'dust2in', lang: 'en', requireCSFilter: false },
+  { url: 'https://esportsinsider.com/feed', source: 'esportsinsider', lang: 'en', requireCSFilter: true },
+  { url: 'https://win.gg/feed/', source: 'wingg', lang: 'en', requireCSFilter: true },
+  { url: 'https://cybersport.pl/tag/cs2/feed/', source: 'cybersportpl', lang: 'pl', requireCSFilter: false },
 ];
 
-// Extrai imagem do HTML ou Content se o feed não enviar uma thumb clara
 function extractImage(item) {
   if (item.mediaContent && item.mediaContent.$ && item.mediaContent.$.url) {
     return item.mediaContent.$.url;
@@ -37,21 +49,91 @@ function extractImage(item) {
 
 function cleanDescription(desc) {
   if (!desc) return '';
-  // Remove HTML tags
   let text = desc.replace(/<[^>]*>?/gm, '');
-  // Decodifica html entities basico
   text = text.replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&').replace(/&quot;/g, '"');
   return text.trim().substring(0, 150) + (text.length > 150 ? '...' : '');
 }
 
 async function fetchOgImage(url) {
   try {
-    const res = await fetch(url);
+    // Timeout para não travar a rotina
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 5000);
+    const res = await fetch(url, { signal: controller.signal });
+    clearTimeout(timeoutId);
+    
     const html = await res.text();
     const match = html.match(/<meta\s+(?:property|name)=['"]og:image['"]\s+content=['"]([^'"]+)['"]/i);
     return match ? match[1] : null;
   } catch (e) {
     return null;
+  }
+}
+
+// Verifica se a notícia é realmente de CS2/CSGO
+function isCSNews(title, summary) {
+  const text = (title + ' ' + summary).toLowerCase();
+  const keywords = ['cs2', 'cs:go', 'counter-strike', 'counter strike', 'valve', 's1mple', 'esl', 'major', 'fallen', 'iem', 'blast', 'pgl'];
+  return keywords.some(kw => text.includes(kw));
+}
+
+async function processFeed(feed, translate) {
+  console.log(`Lendo: ${feed.source}`);
+  try {
+    const feedData = await parser.parseURL(feed.url);
+    const inserts = [];
+
+    for (const item of feedData.items) {
+      let title = item.title || '';
+      let summary = cleanDescription(item.contentSnippet || item.description);
+
+      // Filtro de relevância para sites gerais
+      if (feed.requireCSFilter && !isCSNews(title, summary)) {
+        continue; // Pula notícia se não for de CS
+      }
+
+      let imageUrl = extractImage(item);
+      if (!imageUrl && item.link) {
+        imageUrl = await fetchOgImage(item.link);
+      }
+
+      // Traduz se não for em português
+      if (feed.lang !== 'pt' && translate) {
+        try {
+          title = (await translate(title, { to: 'pt' })).text;
+          if (summary) {
+            summary = (await translate(summary, { to: 'pt' })).text;
+          }
+        } catch (err) {
+          console.error(`Erro ao traduzir notícia (${feed.source}): ${title}`, err.message);
+        }
+      }
+
+      inserts.push({
+        guid: item.guid || item.id || item.link,
+        title: title,
+        summary: summary,
+        link: item.link,
+        image_url: imageUrl,
+        source: feed.source,
+        published_at: new Date(item.pubDate || item.isoDate || Date.now()).toISOString()
+      });
+    }
+
+    if (inserts.length > 0) {
+      const { error } = await supabase
+        .from('news_feed')
+        .upsert(inserts, { onConflict: 'guid', ignoreDuplicates: true });
+
+      if (error) {
+        throw new Error(`Erro no Supabase: ${error.message}`);
+      }
+      console.log(`[OK] Finalizado ${feed.source} - ${inserts.length} itens.`);
+    } else {
+      console.log(`[OK] Finalizado ${feed.source} - Nenhum item novo ou de CS.`);
+    }
+  } catch (e) {
+    console.error(`[FALHA] Feed ${feed.source}:`, e.message);
   }
 }
 
@@ -63,64 +145,12 @@ async function run() {
     const m = await import('@vitalets/google-translate-api');
     translate = m.translate;
   } catch (e) {
-    console.error('Falha ao carregar google-translate-api', e);
+    console.error('Aviso: Falha ao carregar google-translate-api. Seguindo sem tradução.', e.message);
   }
 
-  let totalInserted = 0;
+  // Executa o processamento de todos os feeds concorrentemente
+  await Promise.allSettled(FEEDS.map(feed => processFeed(feed, translate)));
 
-  for (const feed of FEEDS) {
-    console.log(`Lendo: ${feed.source}`);
-    try {
-      const feedData = await parser.parseURL(feed.url);
-      
-      const inserts = [];
-      for (const item of feedData.items) {
-        let imageUrl = extractImage(item);
-        
-        // Se o RSS não mandou a imagem (como o Dust2), vamos buscar na própria página HTML da notícia
-        if (!imageUrl && item.link) {
-          imageUrl = await fetchOgImage(item.link);
-        }
-
-        let title = item.title;
-        let summary = cleanDescription(item.contentSnippet || item.description);
-
-        if (feed.source !== 'dust2br' && translate) {
-          try {
-            title = (await translate(title, { to: 'pt' })).text;
-            if (summary) {
-              summary = (await translate(summary, { to: 'pt' })).text;
-            }
-          } catch (err) {
-            console.error(`Erro ao traduzir notícia: ${title}`, err.message);
-          }
-        }
-
-        inserts.push({
-          guid: item.guid || item.id || item.link,
-          title: title,
-          summary: summary,
-          link: item.link,
-          image_url: imageUrl,
-          source: feed.source,
-          published_at: new Date(item.pubDate || item.isoDate).toISOString()
-        });
-      }
-
-      // Inserir ignorando duplicatas (o guid é UNIQUE no banco)
-      const { data, error } = await supabase
-        .from('news_feed')
-        .upsert(inserts, { onConflict: 'guid', ignoreDuplicates: true });
-
-      if (error) {
-        console.error(`Erro ao salvar no supabase (${feed.source}):`, error);
-      } else {
-        console.log(`Finalizado ${feed.source}.`);
-      }
-    } catch (e) {
-      console.error(`Falha ao ler feed ${feed.source}:`, e.message);
-    }
-  }
   console.log('Rotina concluída.');
 }
 
