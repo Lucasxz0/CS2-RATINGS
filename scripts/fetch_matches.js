@@ -39,7 +39,8 @@ async function run() {
         const data = await res.json();
         matches = matches.concat(data);
       } else {
-        console.warn(`Aviso: Falha ao buscar ${ep}: ${res.statusText}`);
+        const errText = await res.text();
+        throw new Error(`Falha ao buscar ${ep}: ${res.status} ${res.statusText} - ${errText}`);
       }
     }
     
