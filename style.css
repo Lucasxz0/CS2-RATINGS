@@ -3442,24 +3442,34 @@ input[type="range"]::-webkit-slider-thumb:hover {
 }
 
 /* Mobile First: empilhado verticalmente */
-.match-team.team-1 {
+.match-team {
   flex-direction: column;
-  text-align: right;
+  text-align: center;
 }
 
-.match-team.team-2 {
-  flex-direction: column; /* Score, Logo, Nome -> mantem score perto do centro */
-  text-align: left;
-}
+/* Força a mesma ordem vertical para ambos os times no celular */
+.match-team .match-team-logo { order: 1; margin-bottom: 4px; }
+.match-team .match-score { order: 2; margin: 4px 0; }
+.match-team .match-team-name { order: 3; text-align: center; }
 
 @media (min-width: 640px) {
+  /* Reset de ordem no desktop para usar a ordem do HTML (Espelhado) */
+  .match-team .match-team-logo,
+  .match-team .match-score,
+  .match-team .match-team-name {
+    order: 0;
+    margin: 0;
+  }
+  
   /* Desktop: lado a lado */
   .match-team.team-1 {
     flex-direction: row;
+    text-align: right;
     justify-content: flex-end;
   }
   .match-team.team-2 {
     flex-direction: row;
+    text-align: left;
     justify-content: flex-start;
   }
   .match-team.team-1 .match-team-name {
