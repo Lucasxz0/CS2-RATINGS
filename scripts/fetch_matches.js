@@ -21,9 +21,10 @@ async function run() {
 
   try {
     const endpoints = [
-      'https://api.pandascore.co/csgo/matches/running',
-      'https://api.pandascore.co/csgo/matches/upcoming?sort=begin_at&per_page=30',
-      'https://api.pandascore.co/csgo/matches/past?sort=-begin_at&per_page=50'
+      'https://api.pandascore.co/csgo/matches/running?per_page=100',
+      'https://api.pandascore.co/csgo/matches/upcoming?sort=begin_at&per_page=100',
+      'https://api.pandascore.co/csgo/matches/past?sort=-begin_at&per_page=100',
+      'https://api.pandascore.co/csgo/matches/past?sort=-begin_at&per_page=100&page=2'
     ];
     
     let matches = [];
@@ -74,7 +75,7 @@ async function run() {
       // Placar
       let team1Score = 0;
       let team2Score = 0;
-      if (match.results && match.results.length >= 2) {
+      if (match.results) {
         const r1 = match.results.find(r => r.team_id === team1.id);
         const r2 = match.results.find(r => r.team_id === team2.id);
         if (r1) team1Score = r1.score;
