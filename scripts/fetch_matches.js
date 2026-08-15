@@ -20,18 +20,39 @@ async function run() {
   console.log('Iniciando captura de partidas de CS2 (PandaScore)...');
 
   try {
-    const res = await fetch('https://api.pandascore.co/csgo/matches/upcoming?sort=begin_at&per_page=20', {
-      headers: {
-        'Authorization': `Bearer ${PANDASCORE_TOKEN}`,
-        'Accept': 'application/json'
+    const endpoints = [
+      'https://api.pandascore.co/csgo/matches/running',
+      'https://api.pandascore.co/csgo/matches/upcoming?sort=begin_at&per_page=15',
+      'https://api.pandascore.co/csgo/matches/past?sort=-begin_at&per_page=10'
+    ];
+    
+    let matches = [];
+    for (const ep of endpoints) {
+      const res = await fetch(ep, {
+        headers: {
+          'Authorization': `Bearer ${PANDASCORE_TOKEN}`,
+          'Accept': 'application/json'
+        }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        matches = matches.concat(data);
+      } else {
+        console.warn(`Aviso: Falha ao buscar ${ep}: ${res.statusText}`);
       }
-    });
-
-    if (!res.ok) {
-      throw new Error(`Erro na PandaScore API: ${res.statusText}`);
     }
+    
+    // Remove duplicados
+    const uniqueMatches = [];
+    const seen = new Set();
+    for (const m of matches) {
+      if (!seen.has(m.id)) {
+        seen.add(m.id);
+        uniqueMatches.push(m);
+      }
+    }
+    matches = uniqueMatches;
 
-    const matches = await res.json();
     const inserts = [];
 
     for (const match of matches) {
@@ -49,6 +70,16 @@ async function run() {
         streamUrl = ptStream ? ptStream.raw_url : match.streams_list[0].raw_url;
       }
 
+      // Placar
+      let team1Score = 0;
+      let team2Score = 0;
+      if (match.results && match.results.length >= 2) {
+        const r1 = match.results.find(r => r.team_id === team1.id);
+        const r2 = match.results.find(r => r.team_id === team2.id);
+        if (r1) team1Score = r1.score;
+        if (r2) team2Score = r2.score;
+      }
+
       inserts.push({
         match_id: match.id,
         name: match.name,
@@ -57,6 +88,8 @@ async function run() {
         team1_logo: team1.image_url,
         team2_name: team2.name,
         team2_logo: team2.image_url,
+        team1_score: team1Score,
+        team2_score: team2Score,
         match_time: match.begin_at,
         status: match.status,
         stream_url: streamUrl
@@ -64,10 +97,10 @@ async function run() {
     }
 
     if (inserts.length > 0) {
-      // Deleta jogos antigos (passados há mais de 2 dias) para não inchar o banco desnecessariamente
-      const twoDaysAgo = new Date();
-      twoDaysAgo.setDate(twoDaysAgo.getDate() - 2);
-      await supabase.from('pro_matches').delete().lt('match_time', twoDaysAgo.toISOString());
+      // Deleta jogos antigos (passados há mais de 6 horas) para não inchar o banco e esconder jogos que já terminaram há muito tempo
+      const cutoff = new Date();
+      cutoff.setHours(cutoff.getHours() - 6);
+      await supabase.from('pro_matches').delete().lt('match_time', cutoff.toISOString());
 
       const { error } = await supabase
         .from('pro_matches')
@@ -80,6 +113,9 @@ async function run() {
     } else {
       console.log(`[OK] Nenhuma partida estruturada encontrada no momento.`);
     }
+    
+    // Força o encerramento do script (evita que o GitHub Actions fique travado)
+    process.exit(0);
   } catch (e) {
     console.error(`[FALHA] Erro na rotina de partidas:`, e.message);
     process.exit(1);

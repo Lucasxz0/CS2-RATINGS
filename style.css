@@ -3448,6 +3448,17 @@ input[type="range"]::-webkit-slider-thumb:hover {
   background-position: center;
   background-repeat: no-repeat;
   filter: drop-shadow(0 4px 6px rgba(0,0,0,0.3));
+  object-fit: contain;
+  border-radius: 8px;
+}
+
+.match-score {
+  font-family: 'Oswald', sans-serif;
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--accent);
+  margin: 0 12px;
+  text-shadow: 0 2px 4px rgba(0,0,0,0.5);
 }
 
 .match-team-name {

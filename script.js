@@ -1298,6 +1298,21 @@ function renderMatches() {
 
   const matches = globalState.matches;
 
+  // CÓDIGO TEMPORÁRIO PARA TESTE NO LOCALHOST
+  // Simular jogos finalizados (MD3 - Melhor de 3)
+  if (matches.length > 0) {
+    if (!matches.some(m => m.status === 'finished')) {
+      matches[0].status = 'finished';
+      matches[0].team1_score = 2; // 2 Mapas
+      matches[0].team2_score = 1; // 1 Mapa
+    }
+    if (matches.length > 1 && !matches.some(m => m.status === 'running')) {
+      matches[1].status = 'running';
+      matches[1].team1_score = 1; // 1 Mapa
+      matches[1].team2_score = 1; // 1 Mapa (Decider ao vivo)
+    }
+  }
+
   container.innerHTML = matches.map(match => {
     const d = new Date(match.match_time);
     const timeStr = d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
@@ -1310,21 +1325,36 @@ function renderMatches() {
 
     const btnWatch = match.stream_url ? `<a href="${esc(match.stream_url)}" target="_blank" class="match-stream-btn">🎬 Assistir Twitch</a>` : '';
 
+    // Lógica para ícone de time fallback
+    const t1Name = match.team1_name || 'TBD';
+    const t2Name = match.team2_name || 'TBD';
+    const fallbackT1 = `data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='56' height='56'><rect width='56' height='56' rx='8' fill='%23222' stroke='%23444' stroke-width='2'/><text x='50%' y='50%' fill='%23fff' dominant-baseline='central' text-anchor='middle' font-family='sans-serif' font-weight='bold' font-size='20'>${esc(t1Name.substring(0,2).toUpperCase())}</text></svg>`;
+    const fallbackT2 = `data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='56' height='56'><rect width='56' height='56' rx='8' fill='%23222' stroke='%23444' stroke-width='2'/><text x='50%' y='50%' fill='%23fff' dominant-baseline='central' text-anchor='middle' font-family='sans-serif' font-weight='bold' font-size='20'>${esc(t2Name.substring(0,2).toUpperCase())}</text></svg>`;
+    
+    const t1LogoUrl = match.team1_logo || fallbackT1;
+    const t2LogoUrl = match.team2_logo || fallbackT2;
+
+    const showScore = match.status === 'finished' || match.status === 'running';
+    const score1 = showScore ? `<div class="match-score">${match.team1_score ?? 0}</div>` : '';
+    const score2 = showScore ? `<div class="match-score">${match.team2_score ?? 0}</div>` : '';
+
     return `
       <div class="match-card ${match.status === 'running' ? 'is-live' : ''}">
         <div class="match-tournament">${esc(match.tournament_name)}</div>
         <div class="match-teams-row">
-          <div class="match-team">
-            <div class="match-team-logo" style="background-image:url('${esc(match.team1_logo || '')}')"></div>
-            <div class="match-team-name">${esc(match.team1_name || 'TBD')}</div>
+          <div class="match-team" style="flex-direction: row; justify-content: flex-end; align-items: center; gap: 12px; text-align: right;">
+            <div class="match-team-name" style="margin-left: auto;">${esc(t1Name)}</div>
+            <img class="match-team-logo" src="${esc(t1LogoUrl)}" onerror="this.onerror=null; this.src='${fallbackT1}';" alt="${esc(t1Name)}" />
+            ${score1}
           </div>
           <div class="match-vs">
             ${statusBadge}
             ${btnWatch}
           </div>
-          <div class="match-team">
-            <div class="match-team-logo" style="background-image:url('${esc(match.team2_logo || '')}')"></div>
-            <div class="match-team-name">${esc(match.team2_name || 'TBD')}</div>
+          <div class="match-team" style="flex-direction: row; justify-content: flex-start; align-items: center; gap: 12px; text-align: left;">
+            ${score2}
+            <img class="match-team-logo" src="${esc(t2LogoUrl)}" onerror="this.onerror=null; this.src='${fallbackT2}';" alt="${esc(t2Name)}" />
+            <div class="match-team-name" style="margin-right: auto;">${esc(t2Name)}</div>
           </div>
         </div>
       </div>

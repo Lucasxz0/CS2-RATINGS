@@ -8,6 +8,8 @@ CREATE TABLE IF NOT EXISTS public.pro_matches (
     team1_logo TEXT,
     team2_name TEXT,
     team2_logo TEXT,
+    team1_score INTEGER DEFAULT 0,
+    team2_score INTEGER DEFAULT 0,
     match_time TIMESTAMP WITH TIME ZONE NOT NULL,
     status TEXT NOT NULL, -- "not_started", "running", "finished", "canceled"
     stream_url TEXT, -- Link da Twitch

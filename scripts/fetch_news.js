@@ -152,6 +152,7 @@ async function run() {
   await Promise.allSettled(FEEDS.map(feed => processFeed(feed, translate)));
 
   console.log('Rotina concluída.');
+  process.exit(0);
 }
 
 run();
