@@ -56,8 +56,9 @@ async function run() {
     const inserts = [];
 
     for (const match of matches) {
-      // Pula se não tiver os dois times definidos
+      // Pula se não tiver os dois times definidos ou se não tiver horário de início
       if (!match.opponents || match.opponents.length < 2) continue;
+      if (!match.begin_at) continue;
 
       const team1 = match.opponents[0].opponent;
       const team2 = match.opponents[1].opponent;
