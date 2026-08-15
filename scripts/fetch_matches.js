@@ -20,11 +20,14 @@ async function run() {
   console.log('Iniciando captura de partidas de CS2 (PandaScore)...');
 
   try {
+    // Prioriza 'past' e 'running' antes de 'upcoming'.
+    // Se a PandaScore devolver o mesmo jogo duplicado (por causa de cache deles),
+    // queremos garantir que a versão mais atualizada (finalizada/ao vivo) tenha prioridade na desduplicação.
     const endpoints = [
-      'https://api.pandascore.co/csgo/matches/running?per_page=100',
-      'https://api.pandascore.co/csgo/matches/upcoming?sort=begin_at&per_page=100',
       'https://api.pandascore.co/csgo/matches/past?sort=-begin_at&per_page=100',
-      'https://api.pandascore.co/csgo/matches/past?sort=-begin_at&per_page=100&page=2'
+      'https://api.pandascore.co/csgo/matches/past?sort=-begin_at&per_page=100&page=2',
+      'https://api.pandascore.co/csgo/matches/running?per_page=100',
+      'https://api.pandascore.co/csgo/matches/upcoming?sort=begin_at&per_page=100'
     ];
     
     let matches = [];
