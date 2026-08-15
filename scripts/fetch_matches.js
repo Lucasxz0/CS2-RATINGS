@@ -22,8 +22,8 @@ async function run() {
   try {
     const endpoints = [
       'https://api.pandascore.co/csgo/matches/running',
-      'https://api.pandascore.co/csgo/matches/upcoming?sort=begin_at&per_page=15',
-      'https://api.pandascore.co/csgo/matches/past?sort=-begin_at&per_page=10'
+      'https://api.pandascore.co/csgo/matches/upcoming?sort=begin_at&per_page=30',
+      'https://api.pandascore.co/csgo/matches/past?sort=-begin_at&per_page=50'
     ];
     
     let matches = [];
@@ -84,7 +84,7 @@ async function run() {
       inserts.push({
         match_id: match.id,
         name: match.name,
-        tournament_name: match.league.name + (match.serie.name ? ` ${match.serie.name}` : ''),
+        tournament_name: match.league.name + (match.serie && match.serie.name ? ` ${match.serie.name}` : ''),
         team1_name: team1.name,
         team1_logo: team1.image_url,
         team2_name: team2.name,
@@ -98,9 +98,9 @@ async function run() {
     }
 
     if (inserts.length > 0) {
-      // Deleta jogos antigos (passados há mais de 6 horas) para não inchar o banco e esconder jogos que já terminaram há muito tempo
+      // Deleta jogos antigos (passados há mais de 24 horas) para não inchar o banco e esconder jogos que já terminaram ontem
       const cutoff = new Date();
-      cutoff.setHours(cutoff.getHours() - 6);
+      cutoff.setHours(cutoff.getHours() - 24);
       await supabase.from('pro_matches').delete().lt('match_time', cutoff.toISOString());
 
       const { error } = await supabase

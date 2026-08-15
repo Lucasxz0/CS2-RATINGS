@@ -1298,21 +1298,6 @@ function renderMatches() {
 
   const matches = globalState.matches;
 
-  // CÓDIGO TEMPORÁRIO PARA TESTE NO LOCALHOST
-  // Simular jogos finalizados (MD3 - Melhor de 3)
-  if (matches.length > 0) {
-    if (!matches.some(m => m.status === 'finished')) {
-      matches[0].status = 'finished';
-      matches[0].team1_score = 2; // 2 Mapas
-      matches[0].team2_score = 1; // 1 Mapa
-    }
-    if (matches.length > 1 && !matches.some(m => m.status === 'running')) {
-      matches[1].status = 'running';
-      matches[1].team1_score = 1; // 1 Mapa
-      matches[1].team2_score = 1; // 1 Mapa (Decider ao vivo)
-    }
-  }
-
   container.innerHTML = matches.map(match => {
     const d = new Date(match.match_time);
     const timeStr = d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
@@ -1328,8 +1313,8 @@ function renderMatches() {
     // Lógica para ícone de time fallback
     const t1Name = match.team1_name || 'TBD';
     const t2Name = match.team2_name || 'TBD';
-    const fallbackT1 = `data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='56' height='56'><rect width='56' height='56' rx='8' fill='%23222' stroke='%23444' stroke-width='2'/><text x='50%' y='50%' fill='%23fff' dominant-baseline='central' text-anchor='middle' font-family='sans-serif' font-weight='bold' font-size='20'>${esc(t1Name.substring(0,2).toUpperCase())}</text></svg>`;
-    const fallbackT2 = `data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='56' height='56'><rect width='56' height='56' rx='8' fill='%23222' stroke='%23444' stroke-width='2'/><text x='50%' y='50%' fill='%23fff' dominant-baseline='central' text-anchor='middle' font-family='sans-serif' font-weight='bold' font-size='20'>${esc(t2Name.substring(0,2).toUpperCase())}</text></svg>`;
+    const fallbackT1 = `data:image/svg+xml;utf8,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%2256%22 height=%2256%22><rect width=%2256%22 height=%2256%22 rx=%228%22 fill=%22%23222%22 stroke=%22%23444%22 stroke-width=%222%22/><text x=%2250%25%22 y=%2250%25%22 fill=%22%23fff%22 dominant-baseline=%22central%22 text-anchor=%22middle%22 font-family=%22sans-serif%22 font-weight=%22bold%22 font-size=%2220%22>${esc(t1Name.substring(0,2).toUpperCase())}</text></svg>`;
+    const fallbackT2 = `data:image/svg+xml;utf8,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%2256%22 height=%2256%22><rect width=%2256%22 height=%2256%22 rx=%228%22 fill=%22%23222%22 stroke=%22%23444%22 stroke-width=%222%22/><text x=%2250%25%22 y=%2250%25%22 fill=%22%23fff%22 dominant-baseline=%22central%22 text-anchor=%22middle%22 font-family=%22sans-serif%22 font-weight=%22bold%22 font-size=%2220%22>${esc(t2Name.substring(0,2).toUpperCase())}</text></svg>`;
     
     const t1LogoUrl = match.team1_logo || fallbackT1;
     const t2LogoUrl = match.team2_logo || fallbackT2;
