@@ -3435,10 +3435,39 @@ input[type="range"]::-webkit-slider-thumb:hover {
 
 .match-team {
   display: flex;
-  flex-direction: column;
-  align-items: center;
   flex: 1;
   gap: 8px;
+  align-items: center;
+  min-width: 0; /* Permite truncamento correto no flexbox */
+}
+
+/* Mobile First: empilhado verticalmente */
+.match-team.team-1 {
+  flex-direction: column;
+  text-align: right;
+}
+
+.match-team.team-2 {
+  flex-direction: column; /* Score, Logo, Nome -> mantem score perto do centro */
+  text-align: left;
+}
+
+@media (min-width: 640px) {
+  /* Desktop: lado a lado */
+  .match-team.team-1 {
+    flex-direction: row;
+    justify-content: flex-end;
+  }
+  .match-team.team-2 {
+    flex-direction: row;
+    justify-content: flex-start;
+  }
+  .match-team.team-1 .match-team-name {
+    margin-left: auto;
+  }
+  .match-team.team-2 .match-team-name {
+    margin-right: auto;
+  }
 }
 
 .match-team-logo {
@@ -3467,6 +3496,14 @@ input[type="range"]::-webkit-slider-thumb:hover {
   font-weight: 600;
   color: var(--text-main);
   text-align: center;
+  /* Truncate long names or allow wrap up to 2 lines */
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  word-break: break-word;
+  max-width: 100%;
 }
 
 .match-vs {

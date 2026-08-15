@@ -1327,8 +1327,8 @@ function renderMatches() {
       <div class="match-card ${match.status === 'running' ? 'is-live' : ''}">
         <div class="match-tournament">${esc(match.tournament_name)}</div>
         <div class="match-teams-row">
-          <div class="match-team" style="flex-direction: row; justify-content: flex-end; align-items: center; gap: 12px; text-align: right;">
-            <div class="match-team-name" style="margin-left: auto;">${esc(t1Name)}</div>
+          <div class="match-team team-1">
+            <div class="match-team-name">${esc(t1Name)}</div>
             <img class="match-team-logo" src="${esc(t1LogoUrl)}" onerror="this.onerror=null; this.src='${fallbackT1}';" alt="${esc(t1Name)}" />
             ${score1}
           </div>
@@ -1336,10 +1336,10 @@ function renderMatches() {
             ${statusBadge}
             ${btnWatch}
           </div>
-          <div class="match-team" style="flex-direction: row; justify-content: flex-start; align-items: center; gap: 12px; text-align: left;">
+          <div class="match-team team-2">
             ${score2}
             <img class="match-team-logo" src="${esc(t2LogoUrl)}" onerror="this.onerror=null; this.src='${fallbackT2}';" alt="${esc(t2Name)}" />
-            <div class="match-team-name" style="margin-right: auto;">${esc(t2Name)}</div>
+            <div class="match-team-name">${esc(t2Name)}</div>
           </div>
         </div>
       </div>
