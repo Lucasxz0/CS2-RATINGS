@@ -1110,7 +1110,13 @@ async function fetchAllData() {
       photo: dbP.photo,
       card_color: dbP.card_color,
       signature_weapon: dbP.signature_weapon
-    }));
+    })).filter(p => {
+      // Remove contas de teste "LUCAS" que não sejam o oficial "BUIU"
+      if (p.name && p.name.toUpperCase() === 'LUCAS') {
+        if (!p.apelido || p.apelido.toUpperCase() !== 'BUIU') return false;
+      }
+      return true;
+    });
 
     globalState.evaluations = (evalsRes.data || []).map(e => {
       [...ARSENAL_ATTRS, ...MAP_POOL].forEach(m => { 
@@ -1297,7 +1303,22 @@ function renderMatches() {
     return;
   }
 
-  const matches = globalState.matches;
+  // Organiza os jogos: AO VIVO primeiro, depois AGENDADOS (próximos primeiro), depois FINALIZADOS (mais recentes primeiro)
+  const matches = [...globalState.matches].sort((a, b) => {
+    const statusOrder = { 'running': 1, 'not_started': 2, 'upcoming': 2, 'finished': 3, 'canceled': 4, 'postponed': 4 };
+    const sA = statusOrder[a.status] || 5;
+    const sB = statusOrder[b.status] || 5;
+    
+    if (sA !== sB) return sA - sB;
+    
+    const timeA = new Date(a.match_time).getTime();
+    const timeB = new Date(b.match_time).getTime();
+    
+    // Se for finalizado/cancelado, queremos os mais recentes no topo (decrescente)
+    if (sA >= 3) return timeB - timeA;
+    // Se for agendado/ao vivo, queremos o que vai acontecer antes no topo (crescente)
+    return timeA - timeB;
+  });
 
   container.innerHTML = matches.map(match => {
     const d = new Date(match.match_time);
@@ -1307,6 +1328,8 @@ function renderMatches() {
     let statusBadge = '';
     if (match.status === 'running') statusBadge = '<div class="match-status live">AO VIVO</div>';
     else if (match.status === 'finished') statusBadge = '<div class="match-status ended">FINALIZADO</div>';
+    else if (match.status === 'canceled') statusBadge = '<div class="match-status ended" style="background:var(--red);color:#fff">CANCELADO</div>';
+    else if (match.status === 'postponed') statusBadge = '<div class="match-status ended" style="background:var(--accent);color:#000">ADIADO</div>';
     else statusBadge = `<div class="match-status date">${dateStr} às ${timeStr}</div>`;
 
     const btnWatch = match.stream_url ? `<a href="${esc(match.stream_url)}" target="_blank" class="match-stream-btn">🎬 Assistir Twitch</a>` : '';
@@ -1314,8 +1337,10 @@ function renderMatches() {
     // Lógica para ícone de time fallback
     const t1Name = match.team1_name || 'TBD';
     const t2Name = match.team2_name || 'TBD';
-    const fallbackT1 = `data:image/svg+xml;utf8,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%2256%22 height=%2256%22><rect width=%2256%22 height=%2256%22 rx=%228%22 fill=%22%23222%22 stroke=%22%23444%22 stroke-width=%222%22/><text x=%2250%25%22 y=%2250%25%22 fill=%22%23fff%22 dominant-baseline=%22central%22 text-anchor=%22middle%22 font-family=%22sans-serif%22 font-weight=%22bold%22 font-size=%2220%22>${esc(t1Name.substring(0,2).toUpperCase())}</text></svg>`;
-    const fallbackT2 = `data:image/svg+xml;utf8,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%2256%22 height=%2256%22><rect width=%2256%22 height=%2256%22 rx=%228%22 fill=%22%23222%22 stroke=%22%23444%22 stroke-width=%222%22/><text x=%2250%25%22 y=%2250%25%22 fill=%22%23fff%22 dominant-baseline=%22central%22 text-anchor=%22middle%22 font-family=%22sans-serif%22 font-weight=%22bold%22 font-size=%2220%22>${esc(t2Name.substring(0,2).toUpperCase())}</text></svg>`;
+    const svg1 = `<svg xmlns="http://www.w3.org/2000/svg" width="56" height="56"><rect width="56" height="56" rx="8" fill="#222" stroke="#444" stroke-width="2"/><text x="50%" y="50%" fill="#fff" dominant-baseline="central" text-anchor="middle" font-family="sans-serif" font-weight="bold" font-size="20">${esc(t1Name.substring(0,2).toUpperCase())}</text></svg>`;
+    const svg2 = `<svg xmlns="http://www.w3.org/2000/svg" width="56" height="56"><rect width="56" height="56" rx="8" fill="#222" stroke="#444" stroke-width="2"/><text x="50%" y="50%" fill="#fff" dominant-baseline="central" text-anchor="middle" font-family="sans-serif" font-weight="bold" font-size="20">${esc(t2Name.substring(0,2).toUpperCase())}</text></svg>`;
+    const fallbackT1 = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(svg1);
+    const fallbackT2 = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(svg2);
     
     const t1LogoUrl = match.team1_logo || fallbackT1;
     const t2LogoUrl = match.team2_logo || fallbackT2;

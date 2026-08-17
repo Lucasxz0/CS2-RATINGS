@@ -43,7 +43,8 @@ async function run() {
         matches = matches.concat(data);
       } else {
         const errText = await res.text();
-        throw new Error(`Falha ao buscar ${ep}: ${res.status} ${res.statusText} - ${errText}`);
+        console.warn(`⚠️ Aviso: Falha ao buscar ${ep}: ${res.status} ${res.statusText} - ${errText}`);
+        continue;
       }
     }
     
@@ -58,12 +59,17 @@ async function run() {
     }
     matches = uniqueMatches;
 
+    const cutoff = new Date();
+    cutoff.setHours(cutoff.getHours() - 48);
+
     const inserts = [];
 
     for (const match of matches) {
+      // Pula jogos mais velhos que 24 horas para evitar reinserção de jogos que acabaram de ser limpos do banco
+      if (new Date(match.begin_at) < cutoff) continue;
+
       // Pula se não tiver os dois times definidos ou se não tiver horário de início
       if (!match.opponents || match.opponents.length < 2) continue;
-      if (!match.begin_at) continue;
 
       const team1 = match.opponents[0].opponent;
       const team2 = match.opponents[1].opponent;
@@ -103,9 +109,7 @@ async function run() {
     }
 
     if (inserts.length > 0) {
-      // Deleta jogos antigos (passados há mais de 24 horas) para não inchar o banco e esconder jogos que já terminaram ontem
-      const cutoff = new Date();
-      cutoff.setHours(cutoff.getHours() - 24);
+      // Deleta jogos antigos (passados há mais de 24 horas)
       await supabase.from('pro_matches').delete().lt('match_time', cutoff.toISOString());
 
       const { error } = await supabase
