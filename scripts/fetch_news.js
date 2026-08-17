@@ -51,20 +51,29 @@ function cleanDescription(desc) {
   if (!desc) return '';
   let text = desc.replace(/<[^>]*>?/gm, '');
   text = text.replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&').replace(/&quot;/g, '"');
-  return text.trim().substring(0, 150) + (text.length > 150 ? '...' : '');
+  text = text.trim();
+  if (text.length <= 150) return text;
+  let cut = text.substring(0, 150);
+  const lastSpace = cut.lastIndexOf(' ');
+  if (lastSpace > 0) cut = cut.substring(0, lastSpace);
+  return cut + '...';
 }
 
 async function fetchOgImage(url) {
   try {
-    // Timeout para não travar a rotina
+    // Timeout reduzido para não travar a rotina
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 5000);
+    const timeoutId = setTimeout(() => controller.abort(), 2500);
     const res = await fetch(url, { signal: controller.signal });
     clearTimeout(timeoutId);
     
     const html = await res.text();
-    const match = html.match(/<meta\s+(?:property|name)=['"]og:image['"]\s+content=['"]([^'"]+)['"]/i);
-    return match ? match[1] : null;
+    const metaTagMatch = html.match(/<meta[^>]+(?:property|name)=['"]og:image['"][^>]*>/i);
+    if (metaTagMatch) {
+      const contentMatch = metaTagMatch[0].match(/content=['"]([^'"]+)['"]/i);
+      return contentMatch ? contentMatch[1] : null;
+    }
+    return null;
   } catch (e) {
     return null;
   }
@@ -148,8 +157,12 @@ async function run() {
     console.error('Aviso: Falha ao carregar google-translate-api. Seguindo sem tradução.', e.message);
   }
 
-  // Executa o processamento de todos os feeds concorrentemente
-  await Promise.allSettled(FEEDS.map(feed => processFeed(feed, translate)));
+  // Executa o processamento de forma sequencial para evitar IP ban no Google Translate
+  for (const feed of FEEDS) {
+    await processFeed(feed, translate);
+    // Pequeno atraso entre feeds
+    await new Promise(res => setTimeout(res, 1000));
+  }
 
   console.log('Rotina concluída.');
   process.exit(0);

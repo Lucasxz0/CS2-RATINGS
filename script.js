@@ -1263,7 +1263,8 @@ function renderNews() {
       'dust2in': 'DUST2 IN', 'esportsinsider': 'ESPORTS INSIDER', 'wingg': 'WIN.GG',
       'cybersportpl': 'CYBERSPORT'
     };
-    const srcDisplay = srcMap[news.source] || (news.source.charAt(0).toUpperCase() + news.source.slice(1));
+    const sourceStr = news.source || 'Desconhecido';
+    const srcDisplay = srcMap[sourceStr] || (sourceStr.charAt(0).toUpperCase() + sourceStr.slice(1));
     
     return `
       <a href="${esc(news.link)}" target="_blank" rel="noopener noreferrer" class="news-card">
@@ -1281,7 +1282,7 @@ function renderNews() {
   }).join('');
 
   if (currentUser && currentTeam) {
-    localStorage.setItem(`lastNav_${currentUser.id}_${currentTeam.id}`, id);
+    localStorage.setItem(`lastNav_${currentUser.id}_${currentTeam.id}`, 'feed');
   }
 
   // Scroll ao topo ao trocar de seção no mobile
@@ -1728,6 +1729,14 @@ function startEvalWizard() {
         if (myMM && myMM.votes && (!evalState.mataMata || Object.keys(evalState.mataMata).length === 0)) {
           evalState.mataMata = { ...myMM.votes };
         }
+        
+        // BUGFIX: Garante que atributos novos (como CT e TR) existam no rascunho antigo
+        evalState.players.forEach(p => {
+          if (!evalState.ratings[p.id]) evalState.ratings[p.id] = {};
+          ATTRS.forEach(a => { if (evalState.ratings[p.id][a.key] == null) evalState.ratings[p.id][a.key] = 50; });
+          ARSENAL_ATTRS.forEach(a => { if (evalState.ratings[p.id][a.key] == null) evalState.ratings[p.id][a.key] = 0; });
+          MAP_POOL.forEach(a => { if (evalState.ratings[p.id][a.key] == null) evalState.ratings[p.id][a.key] = 0; });
+        });
 
         toast('Retomando rascunho salvo...', 'inf');
         renderEvalStep();
@@ -1745,15 +1754,15 @@ function startEvalWizard() {
     evalState.ratings[p.id] = {};
     const existing = myEvals.find(e => e.playerId === p.id);
     ATTRS.forEach(a => {
-      evalState.ratings[p.id][a.key] = existing && existing[a.key] !== undefined ? existing[a.key] : 50;
+      evalState.ratings[p.id][a.key] = existing && existing[a.key] != null ? existing[a.key] : 50;
     });
     ARSENAL_ATTRS.forEach(a => {
-      let val = existing && existing[a.key] !== undefined ? existing[a.key] : 0;
+      let val = existing && existing[a.key] != null ? existing[a.key] : 0;
       if (val > 5) val = Math.round((val / 20) * 2) / 2;
       evalState.ratings[p.id][a.key] = val;
     });
     MAP_POOL.forEach(a => {
-      let val = existing && existing[a.key] !== undefined ? existing[a.key] : 0;
+      let val = existing && existing[a.key] != null ? existing[a.key] : 0;
       if (val > 5) val = Math.round((val / 20) * 2) / 2;
       evalState.ratings[p.id][a.key] = val;
     });
