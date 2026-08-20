@@ -3380,9 +3380,9 @@ input[type="range"]::-webkit-slider-thumb:hover {
 }
 
 .match-card {
-  background: var(--surface);
+  background: var(--bg-surface);
   border: 1px solid var(--border);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius);
   padding: 16px 20px;
   display: flex;
   flex-direction: column;
@@ -3554,9 +3554,9 @@ input[type="range"]::-webkit-slider-thumb:hover {
 }
 
 .match-status.date {
-  background: rgba(255, 215, 0, 0.1);
-  color: var(--primary);
-  border: 1px solid rgba(255, 215, 0, 0.2);
+  background: rgba(255, 184, 0, 0.1);
+  color: var(--accent);
+  border: 1px solid rgba(255, 184, 0, 0.2);
 }
 
 .match-stream-btn {

@@ -10,8 +10,10 @@ if (!SUPABASE_URL || !SUPABASE_SERVICE_KEY) {
 }
 
 if (!PANDASCORE_TOKEN) {
-  console.warn('⚠️ PANDASCORE_TOKEN não configurado. Pulando coleta de partidas.');
-  process.exit(0);
+  console.error('❌ PANDASCORE_TOKEN não configurado.');
+  console.error('   Adicione o secret em: GitHub → Settings → Secrets → Actions → New repository secret');
+  console.error('   Name: PANDASCORE_TOKEN  |  Value: seu token da PandaScore (pandascore.co)');
+  process.exit(1); // Falha visível no Actions — não silenciosa
 }
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
