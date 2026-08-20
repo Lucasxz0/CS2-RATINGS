@@ -724,6 +724,15 @@ async function finishEnteringApp() {
 
 // Decide se mostra o seletor "essa cartinha é sua?" ou cria uma nova direto.
 async function promptPlayerCardSetup() {
+  // FIX: consulta diretamente se o usuário JÁ tem uma cartinha neste time
+  // (o join_team/create_team pode tê-la criado no servidor antes do fetchAllData terminar)
+  const { data: myCard } = await sbClient
+    .from('players').select('id').eq('team_id', currentTeam.id).eq('owner_id', currentUser.id).maybeSingle();
+  if (myCard) {
+    // Cartinha já existe — apenas finaliza a entrada no app
+    return finishEnteringApp();
+  }
+
   const { data: unclaimed, error } = await sbClient
     .from('players').select('*')
     .eq('team_id', currentTeam.id).is('owner_id', null);
@@ -771,8 +780,14 @@ async function skipClaimCreateNew() {
 async function autoCreateMyCard() {
   const { error } = await sbClient.rpc('create_player_card', { p_team_id: currentTeam.id });
   if (error) {
-    console.error(error);
-    toast('Erro ao criar sua cartinha: ' + translateTeamError(error.message), 'err');
+    // FIX: 'already_has_card' não é um erro real — o join_team já criou a cartinha no servidor.
+    // Trata como sucesso silencioso e recarrega os dados.
+    if (error.message && error.message.includes('already_has_card')) {
+      console.info('[autoCreateMyCard] Cartinha já existia (criada pelo join_team). Continuando...');
+    } else {
+      console.error(error);
+      toast('Erro ao criar sua cartinha: ' + translateTeamError(error.message), 'err');
+    }
   }
   await finishEnteringApp();
 }
@@ -987,7 +1002,7 @@ function renderTeamSettingsContent() {
       </div>
       <div class="input-group" id="ts-password-group" style="display:${t.has_password ? 'flex' : 'none'}; flex-direction:column; margin-top:12px; margin-bottom:0">
         <label class="input-label" for="ts-password">${t.has_password ? 'Trocar senha (opcional)' : 'Senha do time'}</label>
-        <input type="text" id="ts-password" class="input-box" placeholder="Mínimo 4 caracteres" maxlength="40" style="margin-bottom:0" />
+        <input type="password" id="ts-password" class="input-box" placeholder="Mínimo 4 caracteres" maxlength="40" style="margin-bottom:0" /> <!-- FIX #17: era type=text -->
       </div>
     </div>`;
   } else {
@@ -1074,7 +1089,17 @@ async function transferCaptain(newCaptainId, name) {
 }
 
 async function switchTeam() {
-  if (!confirm('Trocar de time? Você poderá entrar em outro time ou criar um novo.')) return;
+  // FIX: avisa o capitão que sair como único membro exclui o time permanentemente
+  let confirmMsg = 'Trocar de time? Você poderá entrar em outro time ou criar um novo.';
+  if (isCaptain) {
+    const soloMember = teamMembersCache.length <= 1;
+    if (soloMember) {
+      confirmMsg = '⚠️ Você é o capitão e único membro.\nAo sair, o time será EXCLUÍDO permanentemente e não poderá ser recuperado.\n\nDeseja continuar?';
+    } else {
+      confirmMsg = '⚠️ Você é o capitão deste time.\nAo sair sem transferir a capitania, o time pode ser excluído ou outro membro assume.\n\nDeseja continuar?';
+    }
+  }
+  if (!confirm(confirmMsg)) return;
 
   const { error } = await sbClient.rpc('leave_team');
   if (error) { console.error(error); return toast(translateTeamError(error.message), 'err'); }
