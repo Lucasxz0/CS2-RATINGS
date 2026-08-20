@@ -1,7 +1,6 @@
 node_modules/
-all_files.txt
-all_files2.txt
-gen_final_sql.js
-restore_final.sql
-setup_news.sql
+tmp/
+db/gen_final_sql.js
+db/restore_final.sql
+db/setup_news.sql
 .DS_Store
