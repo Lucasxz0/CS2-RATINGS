@@ -1089,17 +1089,7 @@ async function transferCaptain(newCaptainId, name) {
 }
 
 async function switchTeam() {
-  // FIX: avisa o capitão que sair como único membro exclui o time permanentemente
-  let confirmMsg = 'Trocar de time? Você poderá entrar em outro time ou criar um novo.';
-  if (isCaptain) {
-    const soloMember = teamMembersCache.length <= 1;
-    if (soloMember) {
-      confirmMsg = '⚠️ Você é o capitão e único membro.\nAo sair, o time será EXCLUÍDO permanentemente e não poderá ser recuperado.\n\nDeseja continuar?';
-    } else {
-      confirmMsg = '⚠️ Você é o capitão deste time.\nAo sair sem transferir a capitania, o time pode ser excluído ou outro membro assume.\n\nDeseja continuar?';
-    }
-  }
-  if (!confirm(confirmMsg)) return;
+  if (!confirm('Trocar de time? Você poderá entrar em outro time ou criar um novo.')) return;
 
   const { error } = await sbClient.rpc('leave_team');
   if (error) { console.error(error); return toast(translateTeamError(error.message), 'err'); }
