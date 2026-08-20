@@ -32,10 +32,10 @@ async function run() {
     // Ao colocar /past primeiro, garantimos que a versão 'finished' vence a
     // versão 'running' desatualizada da cache da PandaScore.
     const endpoints = [
-      'https://api.pandascore.co/cs2/matches/past?sort=-begin_at&per_page=100',
-      'https://api.pandascore.co/cs2/matches/past?sort=-begin_at&per_page=100&page=2',
-      'https://api.pandascore.co/cs2/matches/running?per_page=100',
-      'https://api.pandascore.co/cs2/matches/upcoming?sort=begin_at&per_page=100'
+      'https://api.pandascore.co/csgo/matches/past?sort=-begin_at&per_page=100',
+      'https://api.pandascore.co/csgo/matches/past?sort=-begin_at&per_page=100&page=2',
+      'https://api.pandascore.co/csgo/matches/running?per_page=100',
+      'https://api.pandascore.co/csgo/matches/upcoming?sort=begin_at&per_page=100'
     ];
 
     let matches = [];
@@ -49,7 +49,7 @@ async function run() {
       if (res.ok) {
         const data = await res.json();
         matches = matches.concat(data);
-        console.log(`  ✓ ${ep.split('/cs2/matches/')[1].split('?')[0]}: ${data.length} partidas`);
+        console.log(`  ✓ ${ep.split('/csgo/matches/')[1].split('?')[0]}: ${data.length} partidas`);
       } else {
         const errText = await res.text();
         console.warn(`⚠️ Aviso: Falha ao buscar ${ep}: ${res.status} ${res.statusText} - ${errText}`);
