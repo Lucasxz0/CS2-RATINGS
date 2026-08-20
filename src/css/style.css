@@ -1217,7 +1217,7 @@ textarea.input-box {
 .overlay {
   position: fixed;
   inset: 0;
-  z-index: 200;
+  z-index: 1100; /* FIX: era 200, abaixo do .login-screen (999) — modais ficavam escondidos */
   background: rgba(0, 0, 0, 0.85);
   backdrop-filter: blur(12px);
   display: flex;
