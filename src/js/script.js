@@ -316,7 +316,8 @@ function translateTeamError(msg) {
 function toast(msg, type = 'inf') {
   const el = document.createElement('div'); el.className = `toast ${type}`;
   const ic = { ok: '✓', err: '✗', inf: '●' }; const cl = { ok: '#43A047', err: '#E53935', inf: 'var(--accent)' };
-  el.innerHTML = `<span style="color:${cl[type]};font-weight:700">${ic[type]}</span> ${msg}`;
+  // FIX #12: escapa msg para evitar injeção de HTML via mensagens de erro do Supabase
+  el.innerHTML = `<span style="color:${cl[type]};font-weight:700">${ic[type]}</span> ${esc(String(msg))}`;
   document.getElementById('toast-box').appendChild(el);
   setTimeout(() => { el.style.animation = 'slideRout 0.3s forwards'; setTimeout(() => el.remove(), 300); }, 3500);
 }
@@ -478,6 +479,7 @@ async function handleLogin() {
   const btn = document.getElementById('btn-login');
 
   if (!email) { shakeInput('login-email'); return toast('Digite seu e-mail!', 'err'); }
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { shakeInput('login-email'); return toast('E-mail inválido.', 'err'); } // FIX #6
   if (!pass) { shakeInput('login-password'); return toast('Digite sua senha!', 'err'); }
 
   btn.disabled = true;
@@ -537,6 +539,7 @@ async function handleRegister() {
   const btn = document.getElementById('btn-register');
 
   if (!email) { shakeInput('reg-email'); return toast('Digite seu e-mail!', 'err'); }
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { shakeInput('reg-email'); return toast('E-mail inválido.', 'err'); } // FIX #7
   if (!pass || pass.length < 6) { shakeInput('reg-password'); return toast('Senha deve ter ao menos 6 caracteres!', 'err'); }
   if (!regData.fullName) { regGoStep(1); return toast('Digite seu nome!', 'err'); }
 
@@ -1374,13 +1377,28 @@ function renderMatches() {
 }
 
 function openModal(id) { document.getElementById(id).classList.add('open'); }
-function closeModal(id) { document.getElementById(id).classList.remove('open'); }
-document.querySelectorAll('.overlay').forEach(el => el.addEventListener('click', e => {
-  if (e.target === el) {
-    if (el.id === 'modal-update-password') return; // Obriga a alterar a senha
-    el.classList.remove('open');
+function closeModal(id) {
+  document.getElementById(id).classList.remove('open');
+  // FIX #13: ao fechar o modal de novo clip, limpa imagem anterior para não reutilizar
+  if (id === 'modal-new-clip') {
+    const imgInput = document.getElementById('clip-image-input');
+    if (imgInput) { imgInput.dataset.b64 = ''; imgInput.value = ''; }
+    const preview = document.getElementById('clip-image-preview');
+    if (preview) preview.style.display = 'none';
   }
-}));
+}
+// FIX #1: fecha o card-overlay (era chamada no HTML mas não existia no script)
+function closeCardOverlay() {
+  const el = document.getElementById('card-overlay');
+  if (el) el.classList.remove('open');
+}
+// FIX #24: delegação no document cobre overlays criados dinamicamente (ex: admin-confirm-overlay)
+// Substitui o forEach estático que não pegava elementos renderizados depois da carga
+document.addEventListener('click', e => {
+  if (!e.target.classList.contains('overlay')) return;
+  if (e.target.id === 'modal-update-password') return; // Obriga a alterar a senha
+  e.target.classList.remove('open');
+});
 
 // =========================================
 // CARD BUILDER & COLLECTION
@@ -1661,9 +1679,14 @@ async function saveNameApelido(playerId) {
 // =========================================
 let cropTargetId = null; let cropRatio = 1; let cropImg = new Image();
 let cScale = 1, cPanX = 0, cPanY = 0; let isDragging = false, startX = 0, startY = 0; let canvas, ctx;
+// FIX #22: referências globais para poder remover os event listeners do mouse ao reabrir o cropper
+let cropMouseUpHandler = null; let cropMouseMoveHandler = null;
 
 function initCrop(event, targetId, ratio) {
   const file = event.target.files[0]; if (!file) return;
+  // FIX #9: valida tipo e tamanho antes de processar para evitar travar o canvas com arquivos grandes
+  if (!file.type.startsWith('image/')) { event.target.value = ''; return toast('Apenas imagens são permitidas.', 'err'); }
+  if (file.size > 5 * 1024 * 1024) { event.target.value = ''; return toast('A imagem deve ter no máximo 5 MB.', 'err'); }
   cropTargetId = targetId; cropRatio = ratio;
   const reader = new FileReader();
   reader.onload = e => { cropImg.onload = () => { cScale = 1; cPanX = 0; cPanY = 0; openModal('cropper-modal'); setTimeout(setupCanvas, 100); }; cropImg.src = e.target.result; };
@@ -1678,9 +1701,27 @@ function setupCanvas() {
   cScale = gw / cropImg.width; cPanX = W / 2; cPanY = H / 2;
   drawCropper();
   wrap.onmousedown = e => { isDragging = true; startX = e.clientX - cPanX; startY = e.clientY - cPanY; };
-  window.onmouseup = () => isDragging = false;
-  window.onmousemove = e => { if (isDragging) { cPanX = e.clientX - startX; cPanY = e.clientY - startY; drawCropper(); } };
   wrap.onwheel = e => { e.preventDefault(); cScale *= Math.exp(e.deltaY * -0.002); drawCropper(); };
+  // FIX #22: usa addEventListener em vez de window.on* para não sobrescrever handlers globais
+  if (cropMouseUpHandler) window.removeEventListener('mouseup', cropMouseUpHandler);
+  if (cropMouseMoveHandler) window.removeEventListener('mousemove', cropMouseMoveHandler);
+  cropMouseUpHandler = () => { isDragging = false; };
+  cropMouseMoveHandler = e => { if (isDragging) { cPanX = e.clientX - startX; cPanY = e.clientY - startY; drawCropper(); } };
+  window.addEventListener('mouseup', cropMouseUpHandler);
+  window.addEventListener('mousemove', cropMouseMoveHandler);
+  // FIX #8: suporte completo a touch (arrastar com dedo + pinça para zoom)
+  let lastTouchDist = null;
+  wrap.ontouchstart = e => {
+    e.preventDefault();
+    if (e.touches.length === 1) { isDragging = true; startX = e.touches[0].clientX - cPanX; startY = e.touches[0].clientY - cPanY; }
+    else if (e.touches.length === 2) { isDragging = false; lastTouchDist = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY); }
+  };
+  wrap.ontouchmove = e => {
+    e.preventDefault();
+    if (e.touches.length === 1 && isDragging) { cPanX = e.touches[0].clientX - startX; cPanY = e.touches[0].clientY - startY; drawCropper(); }
+    else if (e.touches.length === 2) { const d = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY); if (lastTouchDist) { cScale *= d / lastTouchDist; drawCropper(); } lastTouchDist = d; }
+  };
+  wrap.ontouchend = e => { e.preventDefault(); if (e.touches.length === 0) { isDragging = false; lastTouchDist = null; } };
 }
 function drawCropper() {
   if (!ctx) return; ctx.clearRect(0, 0, canvas.width, canvas.height); ctx.save();
@@ -1719,8 +1760,15 @@ async function confirmCrop() {
     if (p && p.db_id) {
       toast('Salvando foto no banco...', 'inf');
       p.photo = b64;
-      await sbClient.from('players').update({ photo: b64 }).eq('id', p.db_id);
-      toast('Foto salva!', 'ok');
+      // FIX #10: verifica o erro retornado antes de exibir toast de sucesso
+      const { error: photoErr } = await sbClient.from('players').update({ photo: b64 }).eq('id', p.db_id);
+      if (photoErr) {
+        console.error(photoErr);
+        p.photo = null; // reverte optimistic update
+        toast('Erro ao salvar foto. Tente novamente.', 'err');
+      } else {
+        toast('Foto salva!', 'ok');
+      }
       renderCollection(); openDetailModal(p.id);
     }
   }
@@ -1926,11 +1974,19 @@ async function submitEvaluation() {
     })).filter(x => x.player_id); // garante q p achou o uuid
 
     if (evalInserts.length > 0) {
-      // Supabase nao tem UPSERT massivo facil se a constraint (evaluator_id, player_id) for acionada
-      // Vamos tentar dar upsert/delete manual ou apenas insert.
-      // Escopado por team_id: avaliações feitas em OUTROS times não são tocadas.
-      await sbClient.from('evaluations').delete().eq('evaluator_id', currentUser.id).eq('team_id', currentTeam.id);
-      await sbClient.from('evaluations').insert(evalInserts);
+      // FIX #23: delete + insert separados não são atômicos. Verificamos o erro de cada etapa.
+      // Se o insert falhar depois do delete, o draft local NÃO é limpo (clearEvalDraft
+      // só roda após sucesso), então o usuário pode tentar novamente sem perder os dados.
+      const { error: delErr } = await sbClient.from('evaluations')
+        .delete().eq('evaluator_id', currentUser.id).eq('team_id', currentTeam.id);
+      if (delErr) throw delErr; // falha ANTES de apagar — seguro
+      const { error: insErr } = await sbClient.from('evaluations').insert(evalInserts);
+      if (insErr) {
+        // Avaliações foram apagadas mas o insert falhou. O rascunho local está preservado.
+        toast('Erro ao salvar avaliações. Seus rascunhos locais foram preservados — tente novamente.', 'err');
+        btn.disabled = false; btn.textContent = '🏆 Enviar Avaliação';
+        return;
+      }
     }
 
     await sbClient.from('mata_mata_votes').delete().eq('evaluator_id', currentUser.id).eq('team_id', currentTeam.id);
@@ -2050,7 +2106,10 @@ function renderClips() {
   }).join('');
 }
 
-function handleClipImageSelect(e) { initCrop(e, 'NEW_CLIP', 16 / 9); }
+function handleClipImageSelect(e) {
+  document.getElementById('clip-url').value = ''; // FIX #14: limpa campo URL ao selecionar imagem
+  initCrop(e, 'NEW_CLIP', 16 / 9);
+}
 
 async function submitClip() {
   const title = document.getElementById('clip-title').value.trim();
@@ -2064,18 +2123,23 @@ async function submitClip() {
   else if (url) { mediaType = 'url'; mediaUrl = url; }
   else return toast('Adicione uma URL ou Imagem.', 'err');
 
-  await sbClient.from('clips').insert({
-    player_id: currentUser.id,
-    team_id: currentTeam.id,
-    title, description: desc, media_type: mediaType, media_url: mediaUrl
-  });
+  try { // FIX #2: tratamento de erro no submitClip — antes falhava silenciosamente
+    const { error } = await sbClient.from('clips').insert({
+      player_id: currentUser.id,
+      team_id: currentTeam.id,
+      title, description: desc, media_type: mediaType, media_url: mediaUrl
+    });
+    if (error) throw error;
 
-  closeModal('modal-new-clip');
-  document.getElementById('clip-title').value = ''; document.getElementById('clip-desc').value = ''; document.getElementById('clip-url').value = '';
-  imgInput.dataset.b64 = ''; document.getElementById('clip-image-preview').style.display = 'none';
+    closeModal('modal-new-clip'); // closeModal já limpa a imagem (FIX #13)
+    document.getElementById('clip-title').value = ''; document.getElementById('clip-desc').value = ''; document.getElementById('clip-url').value = '';
 
-  toast('Post criado!', 'ok');
-  await fetchAllData(); renderClips();
+    toast('Post criado!', 'ok');
+    await fetchAllData(); renderClips();
+  } catch (e) {
+    console.error(e);
+    toast('Erro ao postar: ' + (e.message || 'tente novamente.'), 'err');
+  }
 }
 
 async function toggleReact(clipId, type) {
@@ -2087,21 +2151,40 @@ async function toggleReact(clipId, type) {
   if (idx > -1) arr.splice(idx, 1); else arr.push(currentUser.id);
   reactions[type] = arr;
 
-  await sbClient.from('clips').update({ reactions }).eq('id', clipId);
-  await fetchAllData(); renderClips();
+  try { // FIX #4: tratamento de erro no toggleReact
+    const { error } = await sbClient.from('clips').update({ reactions }).eq('id', clipId);
+    if (error) throw error;
+    await fetchAllData(); renderClips();
+  } catch (e) {
+    console.error(e);
+    toast('Erro ao reagir. Tente novamente.', 'err');
+  }
 }
 
 async function addComment(clipId) {
   const inp = document.getElementById('cin-' + clipId);
   const txt = inp.value.trim(); if (!txt) return;
-  await sbClient.from('comments').insert({ clip_id: clipId, player_id: currentUser.id, team_id: currentTeam.id, text: txt });
-  await fetchAllData(); renderClips();
+  try { // FIX #3: tratamento de erro no addComment
+    const { error } = await sbClient.from('comments').insert({ clip_id: clipId, player_id: currentUser.id, team_id: currentTeam.id, text: txt });
+    if (error) throw error;
+    inp.value = '';
+    await fetchAllData(); renderClips();
+  } catch (e) {
+    console.error(e);
+    toast('Erro ao comentar. Tente novamente.', 'err');
+  }
 }
 
 async function deleteClip(clipId) {
   if (!confirm('Deletar post?')) return;
-  await sbClient.from('clips').delete().eq('id', clipId);
-  await fetchAllData(); renderClips();
+  try { // FIX #5: tratamento de erro no deleteClip
+    const { error } = await sbClient.from('clips').delete().eq('id', clipId);
+    if (error) throw error;
+    await fetchAllData(); renderClips();
+  } catch (e) {
+    console.error(e);
+    toast('Erro ao deletar post. Tente novamente.', 'err');
+  }
 }
 
 // Inicializar aplicativo SOMENTE após o DOM + CDN estarem prontos
