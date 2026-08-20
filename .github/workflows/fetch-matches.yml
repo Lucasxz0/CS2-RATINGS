@@ -1,0 +1,30 @@
+name: Fetch Matches (CS2)
+
+on:
+  schedule:
+    # Roda a cada 15 minutos para manter placar ao vivo atualizado
+    - cron: '*/15 * * * *'
+  workflow_dispatch: # Permite rodar manualmente no painel do GitHub
+
+jobs:
+  fetch-matches:
+    runs-on: ubuntu-latest
+    # Só roda se o PANDASCORE_TOKEN estiver configurado
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          
+      - name: Install dependencies
+        run: npm install @supabase/supabase-js
+        
+      - name: Run Fetch Script (Partidas CS2)
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+          PANDASCORE_TOKEN: ${{ secrets.PANDASCORE_TOKEN }}
+        run: node scripts/fetch_matches.js

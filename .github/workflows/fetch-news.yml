@@ -2,9 +2,9 @@ name: Fetch News Feed
 
 on:
   schedule:
-    # Roda de hora em hora
+    # Notícias: de hora em hora (conteúdo não muda tanto)
     - cron: '0 * * * *'
-  workflow_dispatch: # Permite rodar manualmente no painel do GitHub
+  workflow_dispatch:
 
 jobs:
   fetch-and-save:
@@ -12,24 +12,17 @@ jobs:
     steps:
       - name: Checkout repo
         uses: actions/checkout@v4
-      
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '22'
-          
+
       - name: Install dependencies
         run: npm install rss-parser @supabase/supabase-js @vitalets/google-translate-api
-        
+
       - name: Run Fetch Script (Notícias)
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
         run: node scripts/fetch_news.js
-
-      - name: Run Fetch Script (Partidas)
-        env:
-          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
-          PANDASCORE_TOKEN: ${{ secrets.PANDASCORE_TOKEN }}
-        run: node scripts/fetch_matches.js

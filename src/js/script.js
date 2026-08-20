@@ -1251,7 +1251,9 @@ function switchFeedTab(tab) {
   } else if (tab === 'matches') {
     if (btnMatches) btnMatches.classList.add('active');
     if (wrapMatches) wrapMatches.style.display = 'block';
-    renderMatches();
+    // BUG #7 CORRIGIDO: re-fetch direto do banco para garantir dados frescos
+    // (o globalState.matches carregado no login fica desatualizado rapidamente)
+    refreshMatchesAndRender();
   } else {
     document.getElementById('tab-btn-clips').classList.add('active');
     document.getElementById('clips-wrap').style.display = 'block';
@@ -1311,6 +1313,22 @@ function renderNews() {
 
   // Scroll ao topo ao trocar de seção no mobile
   window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+// Re-busca partidas no Supabase e re-renderiza (usado ao abrir a aba)
+async function refreshMatchesAndRender() {
+  try {
+    const container = document.getElementById('matches-container');
+    if (container) container.innerHTML = '<div style="text-align:center;margin-top:20px;color:var(--text-sec)">Carregando partidas...</div>';
+    const { data, error } = await sbClient
+      .from('pro_matches')
+      .select('*')
+      .order('match_time', { ascending: true });
+    if (!error && data) globalState.matches = data;
+  } catch(e) {
+    console.warn('Falha ao atualizar partidas:', e);
+  }
+  renderMatches();
 }
 
 function renderMatches() {
