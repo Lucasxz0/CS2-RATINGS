@@ -2022,8 +2022,21 @@ async function submitEvaluation() {
       }
     }
 
-    await sbClient.from('mata_mata_votes').delete().eq('evaluator_id', currentUser.id).eq('team_id', currentTeam.id);
-    await sbClient.from('mata_mata_votes').insert({ evaluator_id: currentUser.id, team_id: currentTeam.id, votes: evalState.mataMata });
+    // FIX #1: delete + insert separados não são atômicos. Verificamos o erro de cada etapa,
+    // espelhando exatamente o padrão já usado acima para 'evaluations' (FIX #23).
+    // Se o delete funcionar mas o insert falhar, o rascunho local NÃO é limpo
+    // (clearEvalDraft só roda após sucesso), permitindo nova tentativa sem perda de dados.
+    const { error: mmDelErr } = await sbClient.from('mata_mata_votes')
+      .delete().eq('evaluator_id', currentUser.id).eq('team_id', currentTeam.id);
+    if (mmDelErr) throw mmDelErr; // falha ANTES de apagar — seguro
+    const { error: mmInsErr } = await sbClient.from('mata_mata_votes')
+      .insert({ evaluator_id: currentUser.id, team_id: currentTeam.id, votes: evalState.mataMata });
+    if (mmInsErr) {
+      // Votos antigos foram apagados mas o insert falhou. O rascunho local está preservado.
+      toast('Erro ao salvar votos do Mata-Mata. Seus rascunhos locais foram preservados — tente novamente.', 'err');
+      btn.disabled = false; btn.textContent = '🏆 Enviar Avaliação';
+      return;
+    }
 
     await fetchAllData();
     clearEvalDraft();
