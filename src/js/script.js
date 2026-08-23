@@ -2003,6 +2003,10 @@ async function submitEvaluation() {
   if (MM_QUESTIONS.some(q => !evalState.mataMata[q.id])) { toast('Responda todas as perguntas do Mata-Mata.', 'err'); return; }
   const btn = document.getElementById('btn-submit-eval'); btn.disabled = true; btn.textContent = 'Enviando...';
 
+  // FIX #5: rastreia se as avaliações já foram salvas com sucesso para dar mensagem
+  // de erro específica se o mata-mata falhar logo depois.
+  let evaluationsSaved = false;
+
   try {
     const evalInserts = evalState.players.map(p => ({
       evaluator_id: currentUser.id, // auth.users.id
@@ -2027,6 +2031,8 @@ async function submitEvaluation() {
       }
     }
 
+    evaluationsSaved = true; // avaliações salvas com sucesso — mata-mata ainda não
+
     // FIX #1: delete + insert separados não são atômicos. Verificamos o erro de cada etapa,
     // espelhando exatamente o padrão já usado acima para 'evaluations' (FIX #23).
     // Se o delete funcionar mas o insert falhar, o rascunho local NÃO é limpo
@@ -2050,7 +2056,11 @@ async function submitEvaluation() {
     nav('colecao');
   } catch (e) {
     console.error(e);
-    toast('Erro ao salvar no banco', 'err');
+    // FIX #5: mensagem diferenciada quando avaliações já foram salvas mas mata-mata falhou
+    const msg = evaluationsSaved
+      ? 'Avaliações dos jogadores salvas, mas houve erro ao salvar o Mata-Mata. Tente enviar novamente.'
+      : 'Erro ao salvar no banco';
+    toast(msg, 'err');
     btn.disabled = false; btn.textContent = '🏆 Enviar Avaliação';
   }
 }
