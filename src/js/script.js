@@ -1104,6 +1104,9 @@ async function switchTeam() {
 
   closeModal('team-settings-modal');
   currentTeam = null; isCaptain = false;
+  // FIX #2: reset do evalState ao trocar de time para evitar vazamento de estado
+  // entre times — jogadores e notas do time anterior não devem aparecer no wizard do novo time.
+  evalState = { step: 1, players: [], ratings: {}, mataMata: {} };
   toast('Você saiu do time.', 'inf');
   await showTeamSelectScreen();
 }
