@@ -616,6 +616,14 @@ async function init() {
   }
 
   sbClient.auth.onAuthStateChange(async (_event, session) => {
+    // FIX #2: No Supabase JS v2, onAuthStateChange dispara imediatamente com
+    // INITIAL_SESSION logo após ser registrado — essa sessão já foi tratada pela
+    // chamada direta a getSession() + handleAuthChange() acima. Ignoramos aqui para
+    // evitar dupla execução de resolveTeamAndProceed → fetchAllData no carregamento.
+    // Todos os outros eventos (SIGNED_IN, SIGNED_OUT, TOKEN_REFRESHED, PASSWORD_RECOVERY
+    // USER_UPDATED, etc.) continuam sendo processados normalmente.
+    if (_event === 'INITIAL_SESSION') return;
+
     if (_event === 'PASSWORD_RECOVERY') {
       setTimeout(() => {
         openModal('modal-update-password');
