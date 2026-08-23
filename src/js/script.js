@@ -1641,10 +1641,11 @@ async function setCardColor(playerId, hexColor) {
   const p = globalState.players.find(x => x.id === playerId);
   if (!p) return;
 
-  // Update state
-  p.card_color = hexColor || null;
+  // FIX #3: guarda valor anterior para reverter se o save falhar
+  const previousColor = p.card_color;
 
-  // Optimistic UI updates
+  // Update state (optimistic)
+  p.card_color = hexColor || null;
   renderCollection();
   openDetailModal(playerId);
   updateHeader();
@@ -1655,12 +1656,17 @@ async function setCardColor(playerId, hexColor) {
     const { error } = await sbClient.from('players').update(updateObj).eq('id', p.db_id);
     if (error) {
       console.error(error);
+      // Reverte para o valor anterior e re-renderiza
+      p.card_color = previousColor;
+      renderCollection(); openDetailModal(playerId); updateHeader();
       toast('Cor não salva. Você precisa adicionar a coluna "card_color" no Supabase.', 'err');
     } else {
       toast('Cor atualizada!', 'ok');
     }
   } catch (err) {
     console.error(err);
+    p.card_color = previousColor;
+    renderCollection(); openDetailModal(playerId); updateHeader();
   }
 }
 
@@ -1668,10 +1674,11 @@ async function setPlayerRole(playerId, newRole) {
   const p = globalState.players.find(x => x.id === playerId);
   if (!p) return;
 
-  // Update state
-  p.role = newRole;
+  // FIX #3: guarda valor anterior para reverter se o save falhar
+  const previousRole = p.role;
 
-  // Optimistic UI updates
+  // Update state (optimistic)
+  p.role = newRole;
   renderCollection();
   openDetailModal(playerId);
   updateHeader();
@@ -1681,12 +1688,17 @@ async function setPlayerRole(playerId, newRole) {
     const { error } = await sbClient.from('players').update({ role: newRole }).eq('id', p.db_id);
     if (error) {
       console.error(error);
+      // Reverte para o valor anterior e re-renderiza
+      p.role = previousRole;
+      renderCollection(); openDetailModal(playerId); updateHeader();
       toast('Função não salva.', 'err');
     } else {
       toast('Função atualizada!', 'ok');
     }
   } catch (err) {
     console.error(err);
+    p.role = previousRole;
+    renderCollection(); openDetailModal(playerId); updateHeader();
   }
 }
 
