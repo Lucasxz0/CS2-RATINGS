@@ -1,3 +1,12 @@
+# ⚠️  LIMITAÇÃO DO GITHUB ACTIONS — LEIA ANTES DE ALTERAR
+# Workflows agendados (schedule/cron) são DESATIVADOS AUTOMATICAMENTE
+# pelo GitHub após 60 dias sem commits no repositório.
+# Se as notícias pararem de atualizar, verifique primeiro se o workflow
+# foi desativado em: GitHub → Actions → (este workflow) → Enable workflow.
+# Solução permanente: faça pelo menos 1 commit a cada 60 dias, ou use
+# um repositório externo (ex: cron-job.org) para fazer workflow_dispatch
+# via API do GitHub como keep-alive.
+# Ref: https://docs.github.com/en/actions/writing-workflows/choosing-when-your-workflow-runs/disabling-and-enabling-a-workflow
 name: Fetch News Feed
 
 on:
