@@ -1304,6 +1304,7 @@ function renderNews() {
           <div class="news-meta">
             <span class="news-source-badge source-${esc(news.source)}">${esc(srcDisplay)}</span>
             <span>${timeAgo(news.published_at)}</span>
+            ${news.translated === false ? '<span class="news-untranslated-badge" title="Conteúdo no idioma original — tradução indisponível">🌐 Conteúdo original</span>' : ''}
           </div>
           <div class="news-title">${esc(news.title)}</div>
           <div class="news-summary">${esc(news.summary || '')}</div>

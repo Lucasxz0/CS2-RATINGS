@@ -2556,6 +2556,17 @@ input[type="range"]::-webkit-slider-thumb:hover {
   color: #fff;
 }
 
+/* BUG #6: selo discreto para notícias não traduzidas (translated=false no banco) */
+.news-untranslated-badge {
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: transparent;
+  border: 1px solid rgba(255,255,255,0.15);
+  color: var(--text-sec);
+  font-size: 10px;
+  opacity: 0.75;
+}
+
 .source-hltv { background: #2f3640; border-color: #353b44; color: #3498db; }
 .source-dust2br { background: #1a1a1a; border-color: #333; color: #f1c40f; }
 .source-dust2us { background: #1a1a1a; border-color: #333; color: #e74c3c; }
