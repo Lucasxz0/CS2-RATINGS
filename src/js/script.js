@@ -616,6 +616,14 @@ async function init() {
   }
 
   sbClient.auth.onAuthStateChange(async (_event, session) => {
+    // FIX #2: No Supabase JS v2, onAuthStateChange dispara imediatamente com
+    // INITIAL_SESSION logo após ser registrado — essa sessão já foi tratada pela
+    // chamada direta a getSession() + handleAuthChange() acima. Ignoramos aqui para
+    // evitar dupla execução de resolveTeamAndProceed → fetchAllData no carregamento.
+    // Todos os outros eventos (SIGNED_IN, SIGNED_OUT, TOKEN_REFRESHED, PASSWORD_RECOVERY
+    // USER_UPDATED, etc.) continuam sendo processados normalmente.
+    if (_event === 'INITIAL_SESSION') return;
+
     if (_event === 'PASSWORD_RECOVERY') {
       setTimeout(() => {
         openModal('modal-update-password');
@@ -2022,8 +2030,21 @@ async function submitEvaluation() {
       }
     }
 
-    await sbClient.from('mata_mata_votes').delete().eq('evaluator_id', currentUser.id).eq('team_id', currentTeam.id);
-    await sbClient.from('mata_mata_votes').insert({ evaluator_id: currentUser.id, team_id: currentTeam.id, votes: evalState.mataMata });
+    // FIX #1: delete + insert separados não são atômicos. Verificamos o erro de cada etapa,
+    // espelhando exatamente o padrão já usado acima para 'evaluations' (FIX #23).
+    // Se o delete funcionar mas o insert falhar, o rascunho local NÃO é limpo
+    // (clearEvalDraft só roda após sucesso), permitindo nova tentativa sem perda de dados.
+    const { error: mmDelErr } = await sbClient.from('mata_mata_votes')
+      .delete().eq('evaluator_id', currentUser.id).eq('team_id', currentTeam.id);
+    if (mmDelErr) throw mmDelErr; // falha ANTES de apagar — seguro
+    const { error: mmInsErr } = await sbClient.from('mata_mata_votes')
+      .insert({ evaluator_id: currentUser.id, team_id: currentTeam.id, votes: evalState.mataMata });
+    if (mmInsErr) {
+      // Votos antigos foram apagados mas o insert falhou. O rascunho local está preservado.
+      toast('Erro ao salvar votos do Mata-Mata. Seus rascunhos locais foram preservados — tente novamente.', 'err');
+      btn.disabled = false; btn.textContent = '🏆 Enviar Avaliação';
+      return;
+    }
 
     await fetchAllData();
     clearEvalDraft();
@@ -2123,9 +2144,9 @@ function renderClips() {
         <div class="clip-title">${esc(c.title)}</div>
         ${c.description ? `<div class="clip-desc">${esc(c.description)}</div>` : ''}
         <div class="clip-reactions">
-          <button class="react-btn ${rFire.includes(myId) ? 'active' : ''}" onclick="toggleReact('${c.id}','fire')">🔥 ${rFire.length}</button>
-          <button class="react-btn ${rNasty.includes(myId) ? 'active' : ''}" onclick="toggleReact('${c.id}','nasty')">💀 NASTY ${rNasty.length}</button>
-          <button class="react-btn ${rLol.includes(myId) ? 'active' : ''}" onclick="toggleReact('${c.id}','lol')">😂 LOL ${rLol.length}</button>
+          <button class="react-btn ${rFire.includes(myId) ? 'active' : ''}" data-react-clip="${c.id}" data-react-type="fire" onclick="toggleReact('${c.id}','fire')">🔥 ${rFire.length}</button>
+          <button class="react-btn ${rNasty.includes(myId) ? 'active' : ''}" data-react-clip="${c.id}" data-react-type="nasty" onclick="toggleReact('${c.id}','nasty')">💀 NASTY ${rNasty.length}</button>
+          <button class="react-btn ${rLol.includes(myId) ? 'active' : ''}" data-react-clip="${c.id}" data-react-type="lol" onclick="toggleReact('${c.id}','lol')">😂 LOL ${rLol.length}</button>
         </div>
         <div class="clip-comments">
           ${commentsHtml ? `<div class="comment-list">${commentsHtml}</div>` : ''}
@@ -2176,21 +2197,36 @@ async function submitClip() {
 }
 
 async function toggleReact(clipId, type) {
-  const c = globalState.clips.find(x => x.id === clipId);
-  if (!c) return;
-  const reactions = c.reactions || { fire: [], nasty: [], lol: [] };
-  const arr = reactions[type] || [];
-  const idx = arr.indexOf(currentUser.id);
-  if (idx > -1) arr.splice(idx, 1); else arr.push(currentUser.id);
-  reactions[type] = arr;
+  // FIX #3 (opção a): desabilita o botão clicado durante o request para evitar
+  // cliques duplos do mesmo usuário sobrescreverem a reação.
+  // Também re-busca o clip diretamente do banco imediatamente antes de montar
+  // o novo array, reduzindo a janela de race com outros usuários simultâneos
+  // (não elimina 100%, mas mitiga o caso mais comum de sobrescrita).
+  const btn = document.querySelector(`[data-react-clip="${clipId}"][data-react-type="${type}"]`);
+  if (btn) btn.disabled = true;
 
-  try { // FIX #4: tratamento de erro no toggleReact
+  try {
+    // Re-busca o estado atual do clip no banco para usar como base (anti-race)
+    const { data: freshClips, error: fetchErr } = await sbClient
+      .from('clips').select('id, reactions').eq('id', clipId).limit(1);
+    if (fetchErr) throw fetchErr;
+
+    const freshClip = (freshClips && freshClips[0]) || globalState.clips.find(x => x.id === clipId);
+    if (!freshClip) return;
+
+    const reactions = { fire: [], nasty: [], lol: [], ...(freshClip.reactions || {}) };
+    const arr = reactions[type] || [];
+    const idx = arr.indexOf(currentUser.id);
+    if (idx > -1) arr.splice(idx, 1); else arr.push(currentUser.id);
+    reactions[type] = arr;
+
     const { error } = await sbClient.from('clips').update({ reactions }).eq('id', clipId);
     if (error) throw error;
     await fetchAllData(); renderClips();
   } catch (e) {
     console.error(e);
     toast('Erro ao reagir. Tente novamente.', 'err');
+    if (btn) btn.disabled = false; // reabilita só em caso de erro (sucesso re-renderiza o DOM)
   }
 }
 

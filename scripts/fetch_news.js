@@ -107,6 +107,9 @@ async function processFeed(feed, translate) {
       }
 
       // Traduz se não for em português
+      // FIX #5: rastreia se a tradução teve sucesso via campo `translated`.
+      // Requer que a coluna exista no banco (ver SQL de ALTER TABLE abaixo).
+      let translated = true; // assume traduzido; sobrescreve se falhar
       if (feed.lang !== 'pt' && translate) {
         try {
           title = (await translate(title, { to: 'pt' })).text;
@@ -115,7 +118,11 @@ async function processFeed(feed, translate) {
           }
         } catch (err) {
           console.error(`Erro ao traduzir notícia (${feed.source}): ${title}`, err.message);
+          translated = false; // falha na tradução: marca como não traduzido
         }
+      } else if (feed.lang !== 'pt' && !translate) {
+        // Módulo de tradução indisponível: conteúdo permanece no idioma original
+        translated = false;
       }
 
       inserts.push({
@@ -125,6 +132,7 @@ async function processFeed(feed, translate) {
         link: item.link,
         image_url: imageUrl,
         source: feed.source,
+        translated: translated,
         published_at: new Date(item.pubDate || item.isoDate || Date.now()).toISOString()
       });
     }
