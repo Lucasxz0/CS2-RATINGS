@@ -170,14 +170,17 @@ async function run() {
       });
     }
 
-    if (inserts.length > 0) {
-      // Apaga partidas com mais de 72h
-      const { error: deleteError } = await supabase
-        .from('pro_matches')
-        .delete()
-        .lt('match_time', deleteCutoff.toISOString());
-      if (deleteError) console.warn('⚠️ Erro no delete de histórico antigo:', deleteError.message);
+    // FIX #4: limpeza de partidas antigas movida para FORA do if(inserts.length > 0).
+    // Antes, se a API não retornasse partidas válidas, o histórico antigo nunca era limpo
+    // naquele ciclo. Agora o delete roda sempre; o upsert continua condicional.
+    const { error: deleteError } = await supabase
+      .from('pro_matches')
+      .delete()
+      .lt('match_time', deleteCutoff.toISOString());
+    if (deleteError) console.warn('⚠️ Erro no delete de histórico antigo:', deleteError.message);
+    else console.log('  ✓ Limpeza de partidas >72h concluída.');
 
+    if (inserts.length > 0) {
       // Upsert: atualiza registro existente se match_id já existe
       const { error } = await supabase
         .from('pro_matches')
