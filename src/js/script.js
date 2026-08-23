@@ -2144,9 +2144,9 @@ function renderClips() {
         <div class="clip-title">${esc(c.title)}</div>
         ${c.description ? `<div class="clip-desc">${esc(c.description)}</div>` : ''}
         <div class="clip-reactions">
-          <button class="react-btn ${rFire.includes(myId) ? 'active' : ''}" onclick="toggleReact('${c.id}','fire')">🔥 ${rFire.length}</button>
-          <button class="react-btn ${rNasty.includes(myId) ? 'active' : ''}" onclick="toggleReact('${c.id}','nasty')">💀 NASTY ${rNasty.length}</button>
-          <button class="react-btn ${rLol.includes(myId) ? 'active' : ''}" onclick="toggleReact('${c.id}','lol')">😂 LOL ${rLol.length}</button>
+          <button class="react-btn ${rFire.includes(myId) ? 'active' : ''}" data-react-clip="${c.id}" data-react-type="fire" onclick="toggleReact('${c.id}','fire')">🔥 ${rFire.length}</button>
+          <button class="react-btn ${rNasty.includes(myId) ? 'active' : ''}" data-react-clip="${c.id}" data-react-type="nasty" onclick="toggleReact('${c.id}','nasty')">💀 NASTY ${rNasty.length}</button>
+          <button class="react-btn ${rLol.includes(myId) ? 'active' : ''}" data-react-clip="${c.id}" data-react-type="lol" onclick="toggleReact('${c.id}','lol')">😂 LOL ${rLol.length}</button>
         </div>
         <div class="clip-comments">
           ${commentsHtml ? `<div class="comment-list">${commentsHtml}</div>` : ''}
@@ -2197,21 +2197,36 @@ async function submitClip() {
 }
 
 async function toggleReact(clipId, type) {
-  const c = globalState.clips.find(x => x.id === clipId);
-  if (!c) return;
-  const reactions = c.reactions || { fire: [], nasty: [], lol: [] };
-  const arr = reactions[type] || [];
-  const idx = arr.indexOf(currentUser.id);
-  if (idx > -1) arr.splice(idx, 1); else arr.push(currentUser.id);
-  reactions[type] = arr;
+  // FIX #3 (opção a): desabilita o botão clicado durante o request para evitar
+  // cliques duplos do mesmo usuário sobrescreverem a reação.
+  // Também re-busca o clip diretamente do banco imediatamente antes de montar
+  // o novo array, reduzindo a janela de race com outros usuários simultâneos
+  // (não elimina 100%, mas mitiga o caso mais comum de sobrescrita).
+  const btn = document.querySelector(`[data-react-clip="${clipId}"][data-react-type="${type}"]`);
+  if (btn) btn.disabled = true;
 
-  try { // FIX #4: tratamento de erro no toggleReact
+  try {
+    // Re-busca o estado atual do clip no banco para usar como base (anti-race)
+    const { data: freshClips, error: fetchErr } = await sbClient
+      .from('clips').select('id, reactions').eq('id', clipId).limit(1);
+    if (fetchErr) throw fetchErr;
+
+    const freshClip = (freshClips && freshClips[0]) || globalState.clips.find(x => x.id === clipId);
+    if (!freshClip) return;
+
+    const reactions = { fire: [], nasty: [], lol: [], ...(freshClip.reactions || {}) };
+    const arr = reactions[type] || [];
+    const idx = arr.indexOf(currentUser.id);
+    if (idx > -1) arr.splice(idx, 1); else arr.push(currentUser.id);
+    reactions[type] = arr;
+
     const { error } = await sbClient.from('clips').update({ reactions }).eq('id', clipId);
     if (error) throw error;
     await fetchAllData(); renderClips();
   } catch (e) {
     console.error(e);
     toast('Erro ao reagir. Tente novamente.', 'err');
+    if (btn) btn.disabled = false; // reabilita só em caso de erro (sucesso re-renderiza o DOM)
   }
 }
 
