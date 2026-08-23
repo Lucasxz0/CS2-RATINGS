@@ -1136,13 +1136,7 @@ async function fetchAllData() {
       photo: dbP.photo,
       card_color: dbP.card_color,
       signature_weapon: dbP.signature_weapon
-    })).filter(p => {
-      // Remove contas de teste "LUCAS" que não sejam o oficial "BUIU"
-      if (p.name && p.name.toUpperCase() === 'LUCAS') {
-        if (!p.apelido || p.apelido.toUpperCase() !== 'BUIU') return false;
-      }
-      return true;
-    });
+    }));
 
     globalState.evaluations = (evalsRes.data || []).map(e => {
       [...ARSENAL_ATTRS, ...MAP_POOL].forEach(m => { 
