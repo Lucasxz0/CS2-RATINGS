@@ -2304,7 +2304,7 @@ function renderAdminPanel() {
           <span class="admin-card-icon">📦</span>
           <span class="admin-card-title">Backup</span>
         </div>
-        <p class="admin-card-desc">Exporta todas as avaliações, votos e clips como arquivo JSON no seu computador.</p>
+        <p class="admin-card-desc">Exporta todas as avaliações, votos e clips <strong>deste time</strong> como arquivo JSON no seu computador.</p>
         <div class="admin-stats">
           <span>${evCount} avaliações</span> · <span>${mmCount} votos</span> · <span>${clipsCount} clips</span>
         </div>
