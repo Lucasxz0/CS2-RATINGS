@@ -1104,6 +1104,9 @@ async function switchTeam() {
 
   closeModal('team-settings-modal');
   currentTeam = null; isCaptain = false;
+  // FIX #2: reset do evalState ao trocar de time para evitar vazamento de estado
+  // entre times — jogadores e notas do time anterior não devem aparecer no wizard do novo time.
+  evalState = { step: 1, players: [], ratings: {}, mataMata: {} };
   toast('Você saiu do time.', 'inf');
   await showTeamSelectScreen();
 }
@@ -1136,13 +1139,7 @@ async function fetchAllData() {
       photo: dbP.photo,
       card_color: dbP.card_color,
       signature_weapon: dbP.signature_weapon
-    })).filter(p => {
-      // Remove contas de teste "LUCAS" que não sejam o oficial "BUIU"
-      if (p.name && p.name.toUpperCase() === 'LUCAS') {
-        if (!p.apelido || p.apelido.toUpperCase() !== 'BUIU') return false;
-      }
-      return true;
-    });
+    }));
 
     globalState.evaluations = (evalsRes.data || []).map(e => {
       [...ARSENAL_ATTRS, ...MAP_POOL].forEach(m => { 
@@ -1307,6 +1304,7 @@ function renderNews() {
           <div class="news-meta">
             <span class="news-source-badge source-${esc(news.source)}">${esc(srcDisplay)}</span>
             <span>${timeAgo(news.published_at)}</span>
+            ${news.translated === false ? '<span class="news-untranslated-badge" title="Conteúdo no idioma original — tradução indisponível">🌐 Conteúdo original</span>' : ''}
           </div>
           <div class="news-title">${esc(news.title)}</div>
           <div class="news-summary">${esc(news.summary || '')}</div>
@@ -1644,10 +1642,11 @@ async function setCardColor(playerId, hexColor) {
   const p = globalState.players.find(x => x.id === playerId);
   if (!p) return;
 
-  // Update state
-  p.card_color = hexColor || null;
+  // FIX #3: guarda valor anterior para reverter se o save falhar
+  const previousColor = p.card_color;
 
-  // Optimistic UI updates
+  // Update state (optimistic)
+  p.card_color = hexColor || null;
   renderCollection();
   openDetailModal(playerId);
   updateHeader();
@@ -1658,12 +1657,17 @@ async function setCardColor(playerId, hexColor) {
     const { error } = await sbClient.from('players').update(updateObj).eq('id', p.db_id);
     if (error) {
       console.error(error);
+      // Reverte para o valor anterior e re-renderiza
+      p.card_color = previousColor;
+      renderCollection(); openDetailModal(playerId); updateHeader();
       toast('Cor não salva. Você precisa adicionar a coluna "card_color" no Supabase.', 'err');
     } else {
       toast('Cor atualizada!', 'ok');
     }
   } catch (err) {
     console.error(err);
+    p.card_color = previousColor;
+    renderCollection(); openDetailModal(playerId); updateHeader();
   }
 }
 
@@ -1671,10 +1675,11 @@ async function setPlayerRole(playerId, newRole) {
   const p = globalState.players.find(x => x.id === playerId);
   if (!p) return;
 
-  // Update state
-  p.role = newRole;
+  // FIX #3: guarda valor anterior para reverter se o save falhar
+  const previousRole = p.role;
 
-  // Optimistic UI updates
+  // Update state (optimistic)
+  p.role = newRole;
   renderCollection();
   openDetailModal(playerId);
   updateHeader();
@@ -1684,12 +1689,17 @@ async function setPlayerRole(playerId, newRole) {
     const { error } = await sbClient.from('players').update({ role: newRole }).eq('id', p.db_id);
     if (error) {
       console.error(error);
+      // Reverte para o valor anterior e re-renderiza
+      p.role = previousRole;
+      renderCollection(); openDetailModal(playerId); updateHeader();
       toast('Função não salva.', 'err');
     } else {
       toast('Função atualizada!', 'ok');
     }
   } catch (err) {
     console.error(err);
+    p.role = previousRole;
+    renderCollection(); openDetailModal(playerId); updateHeader();
   }
 }
 
@@ -2006,6 +2016,10 @@ async function submitEvaluation() {
   if (MM_QUESTIONS.some(q => !evalState.mataMata[q.id])) { toast('Responda todas as perguntas do Mata-Mata.', 'err'); return; }
   const btn = document.getElementById('btn-submit-eval'); btn.disabled = true; btn.textContent = 'Enviando...';
 
+  // FIX #5: rastreia se as avaliações já foram salvas com sucesso para dar mensagem
+  // de erro específica se o mata-mata falhar logo depois.
+  let evaluationsSaved = false;
+
   try {
     const evalInserts = evalState.players.map(p => ({
       evaluator_id: currentUser.id, // auth.users.id
@@ -2030,6 +2044,8 @@ async function submitEvaluation() {
       }
     }
 
+    evaluationsSaved = true; // avaliações salvas com sucesso — mata-mata ainda não
+
     // FIX #1: delete + insert separados não são atômicos. Verificamos o erro de cada etapa,
     // espelhando exatamente o padrão já usado acima para 'evaluations' (FIX #23).
     // Se o delete funcionar mas o insert falhar, o rascunho local NÃO é limpo
@@ -2053,7 +2069,11 @@ async function submitEvaluation() {
     nav('colecao');
   } catch (e) {
     console.error(e);
-    toast('Erro ao salvar no banco', 'err');
+    // FIX #5: mensagem diferenciada quando avaliações já foram salvas mas mata-mata falhou
+    const msg = evaluationsSaved
+      ? 'Avaliações dos jogadores salvas, mas houve erro ao salvar o Mata-Mata. Tente enviar novamente.'
+      : 'Erro ao salvar no banco';
+    toast(msg, 'err');
     btn.disabled = false; btn.textContent = '🏆 Enviar Avaliação';
   }
 }
@@ -2284,7 +2304,7 @@ function renderAdminPanel() {
           <span class="admin-card-icon">📦</span>
           <span class="admin-card-title">Backup</span>
         </div>
-        <p class="admin-card-desc">Exporta todas as avaliações, votos e clips como arquivo JSON no seu computador.</p>
+        <p class="admin-card-desc">Exporta todas as avaliações, votos e clips <strong>deste time</strong> como arquivo JSON no seu computador.</p>
         <div class="admin-stats">
           <span>${evCount} avaliações</span> · <span>${mmCount} votos</span> · <span>${clipsCount} clips</span>
         </div>
