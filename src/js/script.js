@@ -1241,8 +1241,413 @@ function nav(id) {
 }
 
 // =========================================
-// FEED (NOTÍCIAS E CLIPS)
+// COLECAO — INTERNAL TAB SWITCHER
 // =========================================
+function switchColecaoTab(tab) {
+  const colecaoView     = document.getElementById('colecao-view');
+  const minhaView       = document.getElementById('minha-cartinha-view');
+  const tabColecao      = document.getElementById('ctab-colecao');
+  const tabMinha        = document.getElementById('ctab-minha');
+
+  if (tab === 'colecao') {
+    colecaoView.style.display  = 'block';
+    minhaView.style.display    = 'none';
+    tabColecao.classList.add('active');
+    tabMinha.classList.remove('active');
+    renderCollection();
+  } else {
+    colecaoView.style.display  = 'none';
+    minhaView.style.display    = 'block';
+    tabColecao.classList.remove('active');
+    tabMinha.classList.add('active');
+    renderMyCard();
+  }
+}
+
+// =========================================
+// MINHA CARTINHA — RADAR SVG
+// =========================================
+function buildRadarSVG(avg) {
+  // 6 atributos para o radar
+  const radarAttrs = [
+    { key: 'aim',      label: 'AIM'      },
+    { key: 'reflexo',  label: 'REFLEXO'  },
+    { key: 'sense',    label: 'SENSE'    },
+    { key: 'clutch',   label: 'CLUTCH'   },
+    { key: 'teamplay', label: 'TEAM'     },
+    { key: 'comms',    label: 'COMMS'    },
+  ];
+
+  const cx = 130, cy = 130, R = 90;
+  const n = radarAttrs.length;
+  const levels = 5;
+
+  function polar(angle, r) {
+    const rad = (angle - 90) * Math.PI / 180;
+    return {
+      x: cx + r * Math.cos(rad),
+      y: cy + r * Math.sin(rad),
+    };
+  }
+
+  function polygon(pts) {
+    return pts.map(p => `${p.x.toFixed(2)},${p.y.toFixed(2)}`).join(' ');
+  }
+
+  // Web rings
+  let rings = '';
+  for (let l = 1; l <= levels; l++) {
+    const r = (R / levels) * l;
+    const pts = Array.from({ length: n }, (_, i) => polar((360 / n) * i, r));
+    rings += `<polygon points="${polygon(pts)}" fill="none" stroke="rgba(255,255,255,0.06)" stroke-width="1"/>`;
+  }
+
+  // Spokes
+  let spokes = '';
+  for (let i = 0; i < n; i++) {
+    const end = polar((360 / n) * i, R);
+    spokes += `<line x1="${cx}" y1="${cy}" x2="${end.x.toFixed(2)}" y2="${end.y.toFixed(2)}" stroke="rgba(255,255,255,0.07)" stroke-width="1"/>`;
+  }
+
+  // Data polygon
+  const dataPoints = radarAttrs.map((a, i) => {
+    const val = avg ? Math.min(Math.max(avg[a.key] || 0, 0), 10) : 0;
+    return polar((360 / n) * i, (val / 10) * R);
+  });
+  const dataPoly = `<polygon points="${polygon(dataPoints)}" fill="rgba(255,184,0,0.15)" stroke="#FFB800" stroke-width="2" stroke-linejoin="round"/>`;
+
+  // Data dots
+  const dots = dataPoints.map(p =>
+    `<circle cx="${p.x.toFixed(2)}" cy="${p.y.toFixed(2)}" r="4" fill="#FFB800" stroke="rgba(255,184,0,0.3)" stroke-width="3"/>`
+  ).join('');
+
+  // Labels
+  const labels = radarAttrs.map((a, i) => {
+    const labelR = R + 20;
+    const p = polar((360 / n) * i, labelR);
+    // Shift label anchor based on angle
+    const angle = (360 / n) * i;
+    let anchor = 'middle';
+    if (angle > 10 && angle < 170) anchor = 'start';
+    else if (angle > 190 && angle < 350) anchor = 'end';
+    const val = avg ? (avg[a.key] || 0) : 0;
+    return `
+      <text x="${p.x.toFixed(2)}" y="${(p.y - 6).toFixed(2)}" text-anchor="${anchor}" font-family="Rajdhani,sans-serif" font-size="10" font-weight="700" letter-spacing="0.8" fill="rgba(255,255,255,0.55)" text-transform="uppercase">${a.label}</text>
+      <text x="${p.x.toFixed(2)}" y="${(p.y + 9).toFixed(2)}" text-anchor="${anchor}" font-family="JetBrains Mono,monospace" font-size="11" font-weight="700" fill="#FFB800">${val}</text>
+    `;
+  }).join('');
+
+  return `
+    <svg viewBox="0 0 260 260" xmlns="http://www.w3.org/2000/svg">
+      ${rings}
+      ${spokes}
+      ${dataPoly}
+      ${dots}
+      ${labels}
+    </svg>
+  `;
+}
+
+// =========================================
+// MINHA CARTINHA — RENDER
+// =========================================
+function renderMyCard() {
+  const container = document.getElementById('minha-cartinha-view');
+  if (!container) return;
+
+  const player = globalState.players.find(p => p.owner_id === currentUser?.id);
+
+  // ---- Empty state: jogador ainda não tem cartinha ----
+  if (!player) {
+    container.innerHTML = `
+      <div class="mc-empty">
+        <div class="mc-empty-icon">🃏</div>
+        <div class="mc-empty-title">Você ainda não tem uma cartinha</div>
+        <div class="mc-empty-sub">Entre em um time ou reivindique sua cartinha para ver seu perfil aqui.</div>
+      </div>`;
+    return;
+  }
+
+  const evals   = globalState.evaluations.filter(e => e.playerId === player.id);
+  const avg     = avgAttrs(evals);
+  const overall = avg ? calcFinalOverall(avg, player) : null;
+  const tier    = avg ? getTier(overall) : null;
+
+  // ---- Tier badge color ----
+  const tierColors = {
+    fenomeno:  { bg: 'rgba(200,80,255,0.15)',  color: '#E040FB', border: 'rgba(200,80,255,0.35)' },
+    excelente: { bg: 'rgba(255,215,0,0.12)',   color: '#FFD700', border: 'rgba(200,160,0,0.35)'  },
+    muitobom:  { bg: 'rgba(139,165,192,0.12)', color: '#8BA5C0', border: 'rgba(139,165,192,0.35)'},
+    bom:       { bg: 'rgba(139,90,42,0.15)',   color: '#D4956A', border: 'rgba(139,90,42,0.35)'  },
+    treino:    { bg: 'rgba(64,74,88,0.15)',     color: '#607080', border: 'rgba(64,74,88,0.35)'   },
+  };
+  const tc = tier ? (tierColors[tier] || tierColors.treino) : tierColors.treino;
+
+  // ---- Attr bar color by value ----
+  function barColor(val) {
+    if (val >= 9) return 'linear-gradient(90deg,#E040FB,#FFB800)';
+    if (val >= 7) return 'linear-gradient(90deg,#FFB800,#FFD040)';
+    if (val >= 5) return 'linear-gradient(90deg,#43A047,#66BB6A)';
+    if (val >= 3) return 'linear-gradient(90deg,#FF7043,#FFA726)';
+    return 'linear-gradient(90deg,#E53935,#EF5350)';
+  }
+
+  // ---- Main 8 attrs (excl CT/TR) ----
+  const mainAttrs = ATTRS.filter(a => a.key !== 'ct' && a.key !== 'tr');
+
+  const attrBarsHtml = mainAttrs.map(a => {
+    const val = avg ? (avg[a.key] || 0) : 0;
+    const pct = (val / 10) * 100;
+    return `
+      <div class="mc-attr-row">
+        <div class="mc-attr-label">${a.icon} ${a.short}</div>
+        <div class="mc-attr-bar-wrap">
+          <div class="mc-attr-bar" style="width:${pct}%;background:${barColor(val)}"></div>
+        </div>
+        <div class="mc-attr-val">${val}</div>
+      </div>`;
+  }).join('');
+
+  // ---- Radar SVG ----
+  const radarSvg = buildRadarSVG(avg);
+
+  // ---- CT / TR ----
+  const ctVal = avg ? (avg['ct'] || 0) : '—';
+  const trVal = avg ? (avg['tr'] || 0) : '—';
+
+  // ---- Arsenal stars ----
+  function starsHtml(val5) {
+    const pct = Math.round((val5 / 5) * 100);
+    return `<div class="star-component static" style="--fill:${pct}%"><div class="stars-spacer">★★★★★</div><div class="stars-bg">★★★★★</div><div class="stars-fill">★★★★★</div></div>`;
+  }
+
+  let bestArsenal = null, bestArsenalVal = -1;
+  const arsenalRows = ARSENAL_ATTRS.map(a => {
+    const v = avg ? (avg[a.key] || 0) : 0;
+    if (v > bestArsenalVal) { bestArsenalVal = v; bestArsenal = a; }
+    return `<div class="mc-star-row"><span class="mc-star-label">${a.icon} ${a.short}</span>${starsHtml(v)}</div>`;
+  }).join('');
+
+  // ---- Map pool ----
+  let bestMap = null, bestMapVal = -1;
+  const mapRows = MAP_POOL.map(a => {
+    const v = avg ? (avg[a.key] || 0) : 0;
+    if (v > bestMapVal) { bestMapVal = v; bestMap = a; }
+    return { html: `<div class="mc-star-row"><span class="mc-star-label"><div class="map-icon ${a.key}" style="transform:scale(0.75);margin-right:4px"></div>${a.short}</span>${starsHtml(v)}</div>`, val: v };
+  }).sort((a, b) => b.val - a.val).map(x => x.html).join('');
+
+  // ---- Playstyles ----
+  const pstylesObj = getPlayerPlaystyles(player.id);
+  let badgesHtml = '';
+  if (pstylesObj.styles.length > 0) {
+    badgesHtml = pstylesObj.styles.map(ps => {
+      const isNeg = ps.bonus < 0;
+      let bg, color, border;
+      if (isNeg) { bg='rgba(229,57,53,0.1)'; color='var(--red)'; border='rgba(229,57,53,0.3)'; }
+      else if (ps.medalTier==='gold')   { bg='rgba(255,215,0,0.15)';  color='#FFD700'; border='rgba(255,215,0,0.4)'; }
+      else if (ps.medalTier==='silver') { bg='rgba(192,192,192,0.15)';color='#E0E0E0'; border='rgba(192,192,192,0.4)'; }
+      else                              { bg='rgba(205,127,50,0.15)';  color='#CD7F32'; border='rgba(205,127,50,0.4)'; }
+      return `<div class="mc-badge" style="background:${bg};color:${color};border-color:${border}">${ps.emoji} ${esc(ps.short)}</div>`;
+    }).join('');
+  } else {
+    badgesHtml = '<div style="color:var(--text-muted);font-size:13px">Participe do Mata-Mata para ganhar badges!</div>';
+  }
+
+  // ---- Color picker ----
+  const colors = [
+    { name:'Amarelo', hex:'#F2C411' }, { name:'Roxo',    hex:'#A01C95' },
+    { name:'Verde',   hex:'#019E5A' }, { name:'Azul',    hex:'#5696F6' },
+    { name:'Laranja', hex:'#ED7D10' }, { name:'Padrão',  hex:''        },
+  ];
+  const colorBtns = colors.map(c => `
+    <label class="mc-color-btn ${(player.card_color||'')===c.hex?'selected':''}"
+      style="background:${c.hex||'var(--bg-elevated)'}"
+      title="${c.name}"
+      onclick="setCardColor('${player.id}','${c.hex}');renderMyCard()">
+      ${!c.hex ? '✖' : ''}
+    </label>`).join('');
+
+  // ---- Role selector ----
+  const roles = ['IGL','Entry Fragger','AWPer','Suporte','Lurker','Anchor'];
+  const roleSel = `
+    <select class="role-select" onchange="setPlayerRole('${player.id}',this.value);setTimeout(renderMyCard,400)"
+      style="background:var(--bg-elevated);color:white;border:1px solid rgba(255,255,255,0.1);padding:8px 12px;border-radius:8px;font-family:'Rajdhani',sans-serif;font-weight:700;width:100%;cursor:pointer">
+      ${roles.map(r=>`<option value="${r}" ${player.role===r?'selected':''}>${r}</option>`).join('')}
+    </select>`;
+
+  // ---- Name / apelido editor ----
+  const nameEditor = `
+    <div style="display:flex;flex-direction:column;gap:8px">
+      <input type="text" id="mc-edit-name"    class="input-box" value="${esc(player.name)}"          maxlength="30" placeholder="Nome"    style="margin:0"/>
+      <input type="text" id="mc-edit-apelido" class="input-box" value="${esc(player.apelido||'')}" maxlength="30" placeholder="Apelido" style="margin:0"/>
+      <select id="mc-edit-sig" class="input-box" style="margin:0;background:var(--bg-elevated);color:var(--text);border:1px solid var(--border)">
+        <option value="">Arma Assinatura (Nenhuma)</option>
+        ${CS2_WEAPONS.map(w=>`<option value="${esc(w)}" ${player.signature_weapon===w?'selected':''}>${esc(w)}</option>`).join('')}
+      </select>
+      <button class="btn btn-dark btn-sm" onclick="saveNameApelidoFromMyCard('${player.id}')">💾 Salvar Perfil</button>
+    </div>`;
+
+  // ---- Photo file input ----
+  const photoHtml = player.photo
+    ? `<img src="${esc(player.photo)}">`
+    : initials(player.name);
+
+  // ---- Assemble final HTML ----
+  container.innerHTML = `
+  <div class="mc-page">
+
+    <!-- HERO -->
+    <div class="mc-hero">
+      <div class="mc-photo-wrap">
+        <div class="mc-photo" id="mc-photo-avatar">${photoHtml}</div>
+        <input type="file" id="mc-file-photo" accept="image/*" class="hidden-file" onchange="initCrop(event,'${player.id}',3/4)"/>
+        <label for="mc-file-photo" class="mc-photo-edit" title="Trocar foto">📸</label>
+      </div>
+      <div class="mc-hero-info">
+        <div class="mc-name">${esc(player.name)}</div>
+        <div class="mc-nick">${player.apelido ? `"${esc(player.apelido)}"` : ''}</div>
+        <div class="mc-overall-row">
+          ${avg
+            ? `<span class="mc-overall-num">${overall}</span>
+               <span class="mc-tier-badge" style="background:${tc.bg};color:${tc.color};border:1px solid ${tc.border}">${getTierLabel(tier)}</span>`
+            : `<span style="color:var(--text-muted);font-family:'Rajdhani',sans-serif;font-size:14px">Aguardando avaliações</span>`}
+          <span class="mc-role-badge">${player.role || 'Anchor'}</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- ROW 1: Radar + Attrs -->
+    <div class="mc-grid">
+      <div class="mc-card">
+        <div class="mc-card-title">🕸️ Radar</div>
+        <div class="mc-radar-wrap">
+          ${radarSvg}
+        </div>
+      </div>
+
+      <div class="mc-card">
+        <div class="mc-card-title">📊 Atributos</div>
+        <div class="mc-attr-list">
+          ${attrBarsHtml}
+        </div>
+      </div>
+    </div>
+
+    <!-- ROW 2: CT/TR + Arsenal -->
+    <div class="mc-grid">
+      <div class="mc-card">
+        <div class="mc-card-title">🛡️ Lados</div>
+        <div class="mc-sides">
+          <div class="mc-side-block" style="background:rgba(92,133,208,0.12);border:1px solid rgba(92,133,208,0.25)">
+            <div class="mc-side-label" style="color:#8BA5C0">👮 LADO CT</div>
+            <div class="mc-side-val">${ctVal}</div>
+          </div>
+          <div class="mc-side-block" style="background:rgba(208,168,92,0.12);border:1px solid rgba(208,168,92,0.25)">
+            <div class="mc-side-label" style="color:#D4956A">🥷 LADO TR</div>
+            <div class="mc-side-val">${trVal}</div>
+          </div>
+        </div>
+        ${avg && bestArsenal ? `<div class="mc-best-label">🔫 Especialidade: ${bestArsenal.short} — ${bestArsenalVal.toFixed(1)}/5</div>` : ''}
+      </div>
+
+      <div class="mc-card">
+        <div class="mc-card-title">🔫 Arsenal</div>
+        ${arsenalRows}
+        ${player.signature_weapon ? `<div style="margin-top:12px;color:var(--accent);font-family:'Rajdhani',sans-serif;font-weight:700;font-size:13px">⭐ Preferida: ${esc(player.signature_weapon)}</div>` : ''}
+      </div>
+    </div>
+
+    <!-- ROW 3: Map Pool + Playstyles -->
+    <div class="mc-grid">
+      <div class="mc-card">
+        <div class="mc-card-title">🗺️ Map Pool</div>
+        ${mapRows}
+        ${avg && bestMap ? `<div class="mc-best-label">🏆 Melhor Mapa: ${bestMap.short} — ${bestMapVal.toFixed(1)}/5</div>` : ''}
+      </div>
+
+      <div class="mc-card">
+        <div class="mc-card-title">⚡ Playstyles</div>
+        <div class="mc-badges">${badgesHtml}</div>
+        ${pstylesObj.bonus !== 0 ? `<div style="margin-top:12px;font-size:12px;font-family:'Rajdhani',sans-serif;font-weight:700;color:${pstylesObj.bonus>0?'var(--accent)':'var(--red)'}">Bônus Mata-Mata: ${pstylesObj.bonus>0?'+':''}${pstylesObj.bonus.toFixed(2)}</div>` : ''}
+      </div>
+    </div>
+
+    <!-- ROW 4: Personalização -->
+    <div class="mc-grid">
+      <div class="mc-card">
+        <div class="mc-card-title">🎨 Cor da Cartinha</div>
+        <div class="mc-colors">${colorBtns}</div>
+        <div style="margin-top:16px">
+          <div class="mc-card-title" style="margin-bottom:10px">🎭 Função Tática</div>
+          ${roleSel}
+        </div>
+      </div>
+
+      <div class="mc-card">
+        <div class="mc-card-title">✏️ Editar Perfil</div>
+        ${nameEditor}
+      </div>
+    </div>
+
+    <!-- Tabela de avaliações individuais -->
+    ${evals.length ? `
+    <div class="mc-full mc-card">
+      <div class="mc-card-title">📋 Avaliações Individuais</div>
+      <div style="overflow-x:auto">
+        <table class="stats-tbl">
+          <thead><tr>
+            <th>Avaliador</th>
+            ${ATTRS.map(a=>`<th>${a.short}</th>`).join('')}
+            <th>OVR</th>
+          </tr></thead>
+          <tbody>
+            ${evals.map(ev=>`<tr>
+              <td>${esc(globalState.players.find(p=>p.id===ev.evaluatorId)?.name||ev.evaluatorId)}</td>
+              ${ATTRS.map(a=>`<td class="vm">${ev[a.key]??'—'}</td>`).join('')}
+              <td class="vm" style="font-size:15px">${Math.round(calcBaseOverall(ev,player.role))}</td>
+            </tr>`).join('')}
+            ${avg?`<tr style="background:rgba(255,184,0,0.08)">
+              <td style="font-weight:700;color:var(--accent)">MÉDIA</td>
+              ${ATTRS.map(a=>`<td class="vm" style="color:var(--accent)">${avg[a.key]}</td>`).join('')}
+              <td class="vm" style="color:var(--accent);font-size:15px">${overall}</td>
+            </tr>`:''}
+          </tbody>
+        </table>
+      </div>
+    </div>` : ''}
+
+  </div>`;
+}
+
+// Wrapper para salvar nome/apelido a partir do formulário inline em Minha Cartinha
+function saveNameApelidoFromMyCard(playerId) {
+  // Temporariamente injeta os valores nos campos que saveNameApelido() usa
+  const nameEl    = document.getElementById('mc-edit-name');
+  const apelidoEl = document.getElementById('mc-edit-apelido');
+  const sigEl     = document.getElementById('mc-edit-sig');
+
+  // Cria inputs ocultos compatíveis com a função original
+  let fakeN = document.getElementById('edit-name-' + playerId);
+  let fakeA = document.getElementById('edit-apelido-' + playerId);
+  let fakeS = document.getElementById('edit-signature-' + playerId);
+
+  if (!fakeN) { fakeN = document.createElement('input'); fakeN.id='edit-name-'+playerId;       document.body.appendChild(fakeN); }
+  if (!fakeA) { fakeA = document.createElement('input'); fakeA.id='edit-apelido-'+playerId;    document.body.appendChild(fakeA); }
+  if (!fakeS) { fakeS = document.createElement('select'); fakeS.id='edit-signature-'+playerId; document.body.appendChild(fakeS); }
+
+  fakeN.value = nameEl?.value    || '';
+  fakeA.value = apelidoEl?.value || '';
+  // Garante que o option exista no select fake
+  const sigVal = sigEl?.value || '';
+  if (![...fakeS.options].some(o => o.value === sigVal)) {
+    const opt = document.createElement('option'); opt.value = sigVal; fakeS.appendChild(opt);
+  }
+  fakeS.value = sigVal;
+
+  saveNameApelido(playerId);
+}
+
+
 function switchFeedTab(tab) {
   document.getElementById('tab-btn-news').classList.remove('active');
   document.getElementById('tab-btn-clips').classList.remove('active');

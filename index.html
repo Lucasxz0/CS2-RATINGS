@@ -482,29 +482,45 @@
 
     <!-- ===== CARTINHAS (COLEÇÃO) ===== -->
     <section class="section active" id="section-colecao">
-      <div
-        style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 22px; flex-wrap: wrap; gap: 12px;">
-        <div>
-          <h1 class="page-title">Coleção <span>Oficial</span></h1>
-          <p class="page-sub">Média de todas as avaliações — clique para ver detalhes e trocar foto</p>
+
+      <!-- Tab switcher interno -->
+      <div class="colecao-tabs" id="colecao-tabs">
+        <button class="colecao-tab active" id="ctab-colecao" onclick="switchColecaoTab('colecao')">
+          <span class="ctab-icon">🃏</span> Coleção
+        </button>
+        <button class="colecao-tab" id="ctab-minha" onclick="switchColecaoTab('minha')">
+          <span class="ctab-icon">⚡</span> Minha Cartinha
+        </button>
+      </div>
+
+      <!-- ====== ANEL COLEÇÃO ====== -->
+      <div id="colecao-view">
+        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 22px; flex-wrap: wrap; gap: 12px;">
+          <div>
+            <h1 class="page-title">Coleção <span>Oficial</span></h1>
+            <p class="page-sub">Média de todas as avaliações — clique para ver detalhes e trocar foto</p>
+          </div>
         </div>
+        <div class="tier-ref">
+          <span class="tier-chip"
+            style="background:rgba(200,80,255,.15);color:#E040FB;border:1px solid rgba(200,80,255,.3)">👑 90–99 Fenômeno</span>
+          <span class="tier-chip"
+            style="background:rgba(255,215,0,.12);color:#FFD700;border:1px solid rgba(200,160,0,.3)">⭐ 80–89 Excelente</span>
+          <span class="tier-chip"
+            style="background:rgba(139,165,192,.12);color:#8BA5C0;border:1px solid rgba(139,165,192,.3)">🥈 70–79 Muito Bom</span>
+          <span class="tier-chip"
+            style="background:rgba(139,90,42,.15);color:#D4956A;border:1px solid rgba(139,90,42,.3)">🥉 60–69 Bom</span>
+          <span class="tier-chip"
+            style="background:rgba(64,74,88,.15);color:#607080;border:1px solid rgba(64,74,88,.3)">🎮 &lt;60 Treino</span>
+        </div>
+        <div id="collection-container"></div>
       </div>
-      <div class="tier-ref">
-        <span class="tier-chip"
-          style="background:rgba(200,80,255,.15);color:#E040FB;border:1px solid rgba(200,80,255,.3)">👑 90–99
-          Fenômeno</span>
-        <span class="tier-chip"
-          style="background:rgba(255,215,0,.12);color:#FFD700;border:1px solid rgba(200,160,0,.3)">⭐ 80–89
-          Excelente</span>
-        <span class="tier-chip"
-          style="background:rgba(139,165,192,.12);color:#8BA5C0;border:1px solid rgba(139,165,192,.3)">🥈 70–79 Muito
-          Bom</span>
-        <span class="tier-chip"
-          style="background:rgba(139,90,42,.15);color:#D4956A;border:1px solid rgba(139,90,42,.3)">🥉 60–69 Bom</span>
-        <span class="tier-chip"
-          style="background:rgba(64,74,88,.15);color:#607080;border:1px solid rgba(64,74,88,.3)">🎮 &lt;60 Treino</span>
+
+      <!-- ====== MINHA CARTINHA ====== -->
+      <div id="minha-cartinha-view" style="display:none">
+        <!-- Preenchido por renderMyCard() -->
       </div>
-      <div id="collection-container"></div>
+
     </section>
 
     <!-- ===== FEED (NOTÍCIAS & CLIPS) ===== -->
