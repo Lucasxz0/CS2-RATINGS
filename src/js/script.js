@@ -1228,6 +1228,11 @@ function nav(id) {
   const mbn = document.getElementById('mbn-' + id);
   if (mbn) mbn.classList.add('active');
 
+  // Persiste a seção ativa para restaurar corretamente no próximo carregamento
+  if (currentUser && currentTeam) {
+    localStorage.setItem(`lastNav_${currentUser.id}_${currentTeam.id}`, id);
+  }
+
   if (id === 'colecao') renderCollection();
   if (id === 'feed') switchFeedTab('news');
   if (id === 'avaliar') startEvalWizard();
@@ -1313,9 +1318,7 @@ function renderNews() {
     `;
   }).join('');
 
-  if (currentUser && currentTeam) {
-    localStorage.setItem(`lastNav_${currentUser.id}_${currentTeam.id}`, 'feed');
-  }
+  // lastNav é salvo na função nav() — removido daqui para não sobrescrever com 'feed' sempre
 
   // Scroll ao topo ao trocar de seção no mobile
   window.scrollTo({ top: 0, behavior: 'smooth' });
